@@ -3,6 +3,7 @@ require('../paths.php');
 require(CONFIG.'bootstrap.php');
 require(CLASSES.'fpdf/pdf_label.php');
 include (DB.'output_labels.db.php');
+include (DB.'style_table_sequence.db.php');
 include (LIB.'output.lib.php');
 include (DB.'styles.db.php');
 include (INCLUDES.'scrubber.inc.php');
@@ -354,8 +355,12 @@ if (isset($_SESSION['loginUsername'])) {
 					$entry_no = sprintf("%03s",$row_log['id']);
 
 					if ((!empty($entry_no)) && ($filter == "default")) {
-						if ($aabc) $text = sprintf("\n%s\n(%s)",$entry_no, ltrim($row_log['brewCategory'],"0").".".ltrim($row_log['brewSubCategory'],"0"));
-						else $text = sprintf("\n%s\n(%s)",$entry_no, $row_log['brewCategory'].$row_log['brewSubCategory']);
+						//if ($aabc) $text = sprintf("\n%s\n(%s)",$entry_no, ltrim($row_log['brewCategory'],"0").".".ltrim($row_log['brewSubCategory'],"0"));
+						//else $text = sprintf("\n%s\n(%s)",$entry_no, $row_log['brewCategory'].$row_log['brewSubCategory']);
+						$text = sprintf("\n%s\nT%s\n  S%s",
+							$entry_no,
+							$style_table_map[$style_brew_map[$row_log['id']]],
+							$entry_sequence_map[$row_log['id']]);
 						$pdf->Add_Label($text);
 					}
 
