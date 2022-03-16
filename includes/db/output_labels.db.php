@@ -44,7 +44,8 @@ if ($go == "entries") {
 
 		$query_log = sprintf("SELECT * FROM %s",$prefix."brewing");
 		//if ($filter != "default") $query_log .= sprintf(" WHERE brewCategorySort='%s'",$filter);
-		$query_log .= " ORDER BY brewCategorySort,brewSubCategory,id ASC";
+		// $query_log .= " ORDER BY brewCategorySort,brewSubCategory,id ASC";
+		$query_log .= " ORDER BY id ASC";
 
 	}
 
