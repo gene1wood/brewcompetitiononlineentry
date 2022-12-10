@@ -72,6 +72,10 @@ $table_assignments_user = array();
 $on_the_fly_display = "";
 $on_the_fly_display_tbody = "";
 $roles = "";
+$latest_submitted = array();
+$date_submitted = array();
+$latest_updated = array();
+$date_updated = array();
 
 // Get last judging session end date/time (if any)
 $query_session_end = sprintf("SELECT judgingDateEnd FROM %s",$prefix."judging_locations");
@@ -209,7 +213,7 @@ if (!$admin) {
 	$assignment_display .= "<table id=\"judge_assignments\" class=\"table table-condensed table-striped table-bordered table-responsive\">";
 	$assignment_display .= "<thead>";
 	$assignment_display .= "<tr>";
-	$assignment_display .= sprintf("<th>%s</th>",$label_location);
+	$assignment_display .= sprintf("<th>%s</th>",$label_session);
 	$assignment_display .= sprintf("<th width=\"30%%\">%s</th>",$label_date);
 	$assignment_display .= sprintf("<th width=\"30%%\">%s</th>",$label_table);
 	$assignment_display .= "</tr>";
@@ -281,7 +285,13 @@ if ($totalRows_table_assignments > 0) {
 		$table_location = get_table_info($tbl_loc_disp,"location",$tbl_id,"default","default");
 		$table_location = explode("^", $table_location);
 
-		if (($admin) || ((!$admin) && (time() > $table_location[0]))) {
+		/**
+		 * Open up for non-admins 10 minutes before the stated session start time.
+		 * Useful when judging is in-person and judges wish to review their assigned
+		 * entries prior to "officially" starting.
+		 */
+
+		if (($admin) || ((!$admin) && (time() > ($table_location[0] - 600)))) { 
 
 			if ((!empty($table_location[1]) && (time() > $table_location[1]))) $disable_add_edit = TRUE;
 
@@ -515,7 +525,7 @@ if ($totalRows_table_assignments > 0) {
 
 				if ($assigned_judges > 0) {
 
-					$query_assigned_judge_names = sprintf("SELECT a.brewerFirstName,a.brewerLastName FROM %s a, %s b WHERE b.assignTable='%s' AND a.uid = b.bid ORDER BY a.brewerLastName, a.brewerFirstName ASC",$prefix."brewer",$prefix."judging_assignments",$tbl_id);
+					$query_assigned_judge_names = sprintf("SELECT a.brewerFirstName,a.brewerLastName, b.assignment FROM %s a, %s b WHERE b.assignTable='%s' AND a.uid = b.bid AND b.assignment='J' ORDER BY a.brewerLastName, a.brewerFirstName ASC",$prefix."brewer",$prefix."judging_assignments",$tbl_id);
 					$assigned_judge_names = mysqli_query($connection,$query_assigned_judge_names);
 					$row_assigned_judge_names = mysqli_fetch_assoc($assigned_judge_names);
 					
@@ -790,8 +800,8 @@ if ($totalRows_table_assignments > 0) {
 
 		$total_evals_alert .= "<div class=\"alert alert-teal\">";
 
-		$two_to_end_prefs = ($row_judging_prefs['jPrefsJudgingClosed']-172800);
-		if ($totalRows_session_end > 0) $two_to_end_sess = ($row_session_end['judgingDateEnd']-172800);
+		$two_to_end_prefs = ($row_judging_prefs['jPrefsJudgingClosed'] - 172800);
+		if ((!empty($row_session_end['judgingDateEnd'])) && (is_numeric($row_session_end['judgingDateEnd'])) && ($totalRows_session_end > 0)) $two_to_end_sess = ($row_session_end['judgingDateEnd'] - 172800);	
 		else $two_to_end_sess = $two_to_end_prefs;
 
 		if ($two_to_end_sess > $two_to_end_prefs) {
@@ -876,6 +886,36 @@ if ($totalRows_table_assignments > 0) {
 <script src="<?php echo $base_url;?>js_includes/admin_ajax.min.js"></script>
 <?php
 } // end if ($totalRows_table_assignments > 0)
+
+if ($admin) {
+	$columns = array_column($date_submitted, "date_submitted");
+	array_multisort($columns, SORT_DESC, $date_submitted);
+	$date_submitted = array_unique($date_submitted, SORT_REGULAR);
+	$show_submitted = 0;
+	$latest_submitted_accordion = "";
+
+	foreach ($date_submitted as $key => $value) {
+		$show_submitted += 1;
+		if ($show_submitted <=20) {
+			$submitted_date = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $value['date_submitted'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
+			$latest_submitted_accordion .= sprintf("<li><a href=\"#%s\">%s</a> - %s%s: %s (%s)</li>",$value['brewJudgingNumber'],$value['brewJudgingNumber'],$value['brewCategorySort'],$value['brewSubCategory'],$value['brewStyle'],$submitted_date);
+		}
+	}
+
+	$columns = array_column($date_submitted, "date_updated");
+	array_multisort($columns, SORT_DESC, $date_submitted);
+	$date_submitted = array_unique($date_submitted, SORT_REGULAR);
+	$show_updated = 0;
+	$latest_updated_accordion = "";
+	foreach ($date_submitted as $key => $value) {
+		$show_updated += 1;
+		if ($show_updated <=20) {
+			$updated_date = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $value['date_updated'], $_SESSION['prefsDateFormat'], $_SESSION['prefsTimeFormat'], "short", "date-time");
+			$latest_updated_accordion .= sprintf("<li><a href=\"#%s\">%s</a> - %s%s: %s (%s)</li>",$value['brewJudgingNumber'],$value['brewJudgingNumber'],$value['brewCategorySort'],$value['brewSubCategory'],$value['brewStyle'],$updated_date);
+		}
+	}
+}
+
 if (!$admin) {
 	echo $header;
 	if (($judging_open) && (empty($table_assign_judge))) echo sprintf("<p>%s</p>",$evaluation_info_009);
@@ -889,6 +929,38 @@ if (!empty($judge_score_disparity)) echo $jscore_disparity;
 if (!empty($assign_score_mismatch)) echo $assign_score_mismatch;
 if (!empty($dup_judge_evals_alert)) echo $dup_judge_evals_alert;
 if (!empty($single_evaluation)) echo $single_eval;
+
+if ((!empty($latest_submitted_accordion)) || (!empty($latest_updated_accordion))) {
+	echo "<div class=\"bcoem-admin-element\">";
+
+	if (!empty($latest_submitted_accordion)) {
+		echo "<a style=\"margin:0 10px 15px 0;\" class=\"btn btn-default\" role=\"button\" data-toggle=\"collapse\" href=\"#latest-submitted\" aria-expanded=\"false\" aria-controls=\"latest-submitted\"><i style=\"padding-right: 5px;\" class=\"fa fa-clock-o\"></i>20 Latest Submitted</a>";
+	}
+
+	if (!empty($latest_updated_accordion)) {
+		echo "<a style=\"margin:0 10px 15px 0;\" class=\"btn btn-default\" role=\"button\" data-toggle=\"collapse\" href=\"#latest-updated\" aria-expanded=\"false\" aria-controls=\"latest-updated\"><i style=\"padding-right: 5px;\" class=\"fa fa-clock-o\"></i>20 Latest Updated</a>";
+	}
+
+}
+
+if (!empty($latest_submitted_accordion)) {
+	echo "<div id=\"latest-submitted\" class=\"collapse alert alert-teal\">";
+	echo "<p><i style=\"padding-right: 5px;\" class=\"fa fa-clock-o\"></i>The <strong>20 most recently submitted</strong> evaluations:</p>";
+	echo "<ul>";
+	echo $latest_submitted_accordion;
+	echo "</ul>";
+	echo "</div>";
+}
+
+if (!empty($latest_updated_accordion)) {
+	echo "<div id=\"latest-updated\" class=\"collapse alert alert-teal\">";
+	echo "<p><i style=\"padding-right: 5px;\" class=\"fa fa-clock-o\"></i>The <strong>20 most recently updated</strong> evaluations:</p>";
+	echo "<ul>";
+	echo $latest_updated_accordion;
+	echo "</ul>";
+	echo "</div>";
+}
+
 if (!$admin) echo $assignment_display;
 if (!empty($on_the_fly_display)) echo $on_the_fly_display;
 if (($admin) || ((!empty($table_assign_judge)) && (!$admin))) {

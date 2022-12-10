@@ -87,7 +87,7 @@ $style_info_modals = "";
 $ba_accepted_styles = array();
 $anchor_links_nav = "";
 $anchor_links = array();
-$anchor_top = "<p><a href=\"#top-page\">".$label_top." <span class=\"fa fa-arrow-circle-up\"></span></a></p>";
+$anchor_top = "<p class=\"hidden-print\"><a href=\"#top-page\">".$label_top." <span class=\"fa fa-arrow-circle-up\"></span></a></p>";
 
 // Registration Window
 if (!$logged_in) {
@@ -241,8 +241,7 @@ $header1_8 .= "";
 if ($_SESSION['prefsStyleSet'] == "BA") $page_info8 .= sprintf("<p>%s</p>",$entry_info_text_047);
 else $page_info8 .= sprintf("<p>%s</p>",$entry_info_text_046);
 
-if ($_SESSION['prefsStyleSet'] == "BA") $style_set = "Brewers Association";
-else $style_set = str_replace("2"," 2",$row_styles['brewStyleVersion']);
+$style_set = $_SESSION['style_set_short_name'];
 
 $anchor_links[] = $label_judging_styles;
 $anchor_name = str_replace(" ", "-", $label_judging_styles);
@@ -340,7 +339,7 @@ if ($show_entries) {
 	// Bottle Acceptance
 	$anchor_links[] = $label_entry_acceptance_rules;
 	$anchor_name = str_replace(" ", "-", $label_entry_acceptance_rules);
-	$page_info9 .= sprintf("<p><strong>%s: %s</strong></p>", $label_number_bottles, $_SESSION['jPrefsBottleNum']);
+	if (!empty($_SESSION['jPrefsBottleNum'])) $page_info9 .= sprintf("<p><strong>%s: %s</strong></p>", $label_number_bottles, $_SESSION['jPrefsBottleNum']);
 
 	if ((isset($row_contest_info['contestBottles'])) && (($dropoff_window_open < 2) || ($shipping_window_open < 2))) {
 		$header1_9 .= sprintf("<a class=\"anchor-offset\" name=\"%s\"></a><h2>%s</h2>",strtolower($anchor_name),$label_entry_acceptance_rules);
@@ -507,7 +506,7 @@ if ($show_entries) {
 }
 
 // Show rules if winner display is active (moved from default page)
-if ((judging_date_return() == 0) && ($registration_open == 2) && ($entry_window_open == 2)) {
+if (($judging_past == 0) && ($registration_open == 2) && ($entry_window_open == 2)) {
 	$anchor_links[] = $label_rules;
 	$anchor_name = str_replace(" ", "-", $label_rules);
 	$header1_17 .= sprintf("<a class=\"anchor-offset\" name=\"%s\"></a><h2>%s</h2>",strtolower($anchor_name),$label_rules);

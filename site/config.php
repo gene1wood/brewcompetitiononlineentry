@@ -2,8 +2,7 @@
 /**
  * Module:        config.php
  * Description:   This module houses configuration variables for DB connection, etc.
- *
- * Last Modified: August 26, 2021
+ * Last Modified: December 3, 2022
  */
 
 /**
@@ -31,7 +30,9 @@ $hostname = 'localhost';
  * $username = 'fred'.
  */
 
+
 $username = '';
+
 
 /**
  * INSERT YOUR PASSWORD BETWEEN THE SINGLE-QUOTATION MARKS ('').
@@ -48,6 +49,7 @@ $password = '';
  */
 
 $database = '';
+
 
 /**
  * If the database port is different from the default then overwrite as the 
@@ -184,7 +186,7 @@ $sub_directory = '';
  * server AND you're experiencing log in or session issues, or if pages are not 
  * rendering correctly, comment out the second line in the block below (the if
  * statement).
- * @fixes https://github.com/geoffhumphrey/brewcompetitiononlineentry/issues/1123 
+ * @fixes https://github.com/geoffhumphrey/brewcompetitiononlineentry/issues/1123
  */
 
 $base_url = 'http://';
