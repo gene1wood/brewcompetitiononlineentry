@@ -934,6 +934,7 @@ if ($go == "default") {  ?>
 		<div class="col-lg-offset-2 col-md-offset-3 col-sm-offset-4">
 			<!-- Input Here -->
 			<button name="submit" type="submit" class="btn btn-primary">Register</button>
+			<p style="color:red">All fields above with a * star as well as every single Session Availability field must be filled out for the Register button to be clickable</p>
 		</div>
 	</div><!-- Form Group -->
 </form>
