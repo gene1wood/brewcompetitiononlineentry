@@ -49,7 +49,7 @@ $query_style_brew = "SELECT $brewing_db_table.id as brewing_id, $styles_db_table
 FROM $brewing_db_table, $styles_db_table 
 WHERE $brewing_db_table.brewCategorySort = $styles_db_table.brewStyleGroup 
 AND $brewing_db_table.brewSubCategory = $styles_db_table.brewStyleNum 
-AND $styles_db_table.brewStyleVersion = 'BJCP2015'";
+AND $styles_db_table.brewStyleVersion = 'BJCP2021'";
 $style_brew = mysqli_query($connection, $query_style_brew) or die(mysqli_error($connection));
 $style_brew_map = array();
 do {
@@ -60,7 +60,7 @@ do {
 $query_style_id_catsubcat = "SELECT $styles_db_table.id as styles_id,
 CONCAT($styles_db_table.brewStyleGroup, $styles_db_table.brewStyleNum) as styles_catsubcat
 FROM $styles_db_table 
-WHERE $styles_db_table.brewStyleVersion = 'BJCP2015'";
+WHERE $styles_db_table.brewStyleVersion = 'BJCP2021'";
 $style_id_catsubcat = mysqli_query($connection, $query_style_id_catsubcat) or die(mysqli_error());
 $style_id_catsubcat_map = array();
 do {
