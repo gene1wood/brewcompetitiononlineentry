@@ -708,6 +708,14 @@ if (isset($_SESSION['loginUsername'])) {
 					if ((!empty($entry_no)) && ($filter == "default")) {
 						//if ($aabc) $text = sprintf("\n%s\n(%s)",$entry_no, ltrim($row_log['brewCategory'],"0").".".ltrim($row_log['brewSubCategory'],"0"));
 						//else $text = sprintf("\n%s\n(%s)",$entry_no, $row_log['brewCategory'].$row_log['brewSubCategory']);
+						if (! array_key_exists($row_log['id'], $style_brew_map)) {
+							error_log("ID " . $row_log['id'] . " is missing from style_brew_map");
+						} elseif (! array_key_exists($style_brew_map[$row_log['id']], $style_table_map)) {
+							error_log("style_brew_map " . $style_brew_map[$row_log['id']] . " is missing from style_table_map for ID " . $row_log['id']);
+						}
+						if (! array_key_exists($row_log['id'], $entry_sequence_map)) {
+							error_log("ID " . $row_log['id'] . " is missing from entry_sequence_map");
+						}
 						$text = sprintf("\n%s\nT%s\n  S%s",
 							$entry_no,
 							$style_table_map[$style_brew_map[$row_log['id']]],
