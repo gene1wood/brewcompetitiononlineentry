@@ -53,9 +53,9 @@ AND $brewing_db_table.brewSubCategory = $styles_db_table.brewStyleNum
 AND $styles_db_table.brewStyleVersion = 'BJCP2021'";
 $style_brew = mysqli_query($connection, $query_style_brew) or die(mysqli_error($connection));
 $style_brew_map = array();
-do {
+while ($row_style_brew = mysqli_fetch_assoc($style_brew)) {
 	$style_brew_map[$row_style_brew['brewing_id']] = $row_style_brew['styles_id'];
-} while ($row_style_brew = mysqli_fetch_assoc($style_brew));
+}
 
 // entry sequence map
 $query_style_id_catsubcat = "SELECT $styles_db_table.id as styles_id,
@@ -64,9 +64,9 @@ FROM $styles_db_table
 WHERE $styles_db_table.brewStyleVersion = 'BJCP2021'";
 $style_id_catsubcat = mysqli_query($connection, $query_style_id_catsubcat) or die(mysqli_error());
 $style_id_catsubcat_map = array();
-do {
+while ($row_style_id_catsubcat = mysqli_fetch_assoc($style_id_catsubcat)) {
 	$style_id_catsubcat_map[$row_style_id_catsubcat['styles_catsubcat']] = $row_style_id_catsubcat['styles_id'];
-} while ($row_style_id_catsubcat = mysqli_fetch_assoc($style_id_catsubcat));
+}
 
 $style_entry_map = array();  // style => [entid, entid, entid...]
 foreach ($style_brew_map as $brewing_id => $styles_id) {
