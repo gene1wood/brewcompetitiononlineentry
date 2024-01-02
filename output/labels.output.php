@@ -716,10 +716,12 @@ if (isset($_SESSION['loginUsername'])) {
 						if (! array_key_exists($row_log['id'], $entry_sequence_map)) {
 							error_log("ID " . $row_log['id'] . " is missing from entry_sequence_map");
 						}
-						$text = sprintf("\n%s\nT%s\n  S%s",
+						// The judge coordinator for 2024 no longer uses sequence number
+						// and so $entry_sequence_map[$row_log['id']] isn't added to the labels any more
+						$text = sprintf("\n%s\nT%s\n(%s)",
 							$entry_no,
 							$style_table_map[$style_brew_map[$row_log['id']]],
-							$entry_sequence_map[$row_log['id']]);
+							$row_log['brewCategory'].$row_log['brewSubCategory']);
 						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text))); 
 						$pdf->Add_Label($text);
 					}
