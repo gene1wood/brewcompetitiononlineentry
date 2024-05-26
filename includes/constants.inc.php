@@ -12,10 +12,11 @@
  */
 
 $languages = array(
-    "en-US" => "US English",
+    "pt-BR" => "Brazilian Portuguese",
     "cs-CZ" => "Czech",
-    "pt-BR" => "Brazilian Portuguese"
-    //"es-ES" => "Spanish (Spain)"
+    "en-US" => "English (US)",
+    "fr-FR" => "French",
+    "es-419" => "Spanish (Latin America)"
 );
 
 /** -------------------------- Theme File names and  Display Name -------------------------------
@@ -24,7 +25,12 @@ $languages = array(
  * The file name will be stored in the preferences DB table row called prefsTheme and called by all pages
  */
 
-$theme_name = array("default|BCOE&amp;M Default (Gray)","bruxellensis|Bruxellensis (Blue-Gray)", "claussenii|Claussenii (Green)", "naardenensis|Naardenensis (Teal)");
+$theme_name = array(
+    "default" => "BCOE&amp;M Default (Gray)",
+    "bruxellensis" => "Bruxellensis (Blue-Gray)",
+    "claussenii" => "Claussenii (Green)",
+    "naardenensis" => "Naardenensis (Teal)"
+);
 
 // -------------------------- Countries List ----------------------------------------------------
 // Array of countries to utilize when users sign up and for competition info
@@ -140,10 +146,9 @@ $tie_break_rules = array(
  * Future release:
  * Convert the array to JSON array and move to contest_info DB table - 
  * contestClubs column.
- * $club_array = json_decode($_SESSION['contestClubs'], true);
+ * 
+ * Updated January 11, 2024
  */
-
-// Updated May 20, 2022
 
 $club_array = array(
     "1.090",
@@ -956,6 +961,7 @@ $club_array = array(
     "Fitchburg Order of Ale Makers",
     "Five Guys Inebriated",
     "Flathead Valley Brewers",
+    "Flat Rock Brew Club",
     "Fletcher Street Brews and Social Club",
     "Fleuchaus Brauhaus",
     "Flint Urban Brewing",
@@ -1782,6 +1788,7 @@ $club_array = array(
     "Palm Beach Draughtsmen",
     "Palmetto State Brewers",
     "Palo Brew Crew",
+    "Panomaju",
     "Parker Hop-Aholics",
     "Parkside Homebrew Club",
     "PartTimeBrewers",
@@ -1795,6 +1802,7 @@ $club_array = array(
     "Peak to Peak Hoppers",
     "Pecos Valley Brewers",
     "Pendleton Ale and Lager Enthusiasts (PALE)",
+    "Peninsula Fermentation Society",
     "Peoples Ale And Lager Society",
     "Petoskey Homebrew Club",
     "Phantom Homebrew",
@@ -1856,7 +1864,7 @@ $club_array = array(
     "Purgatory SOBs",
     "Puyallup Brew Crew",
     "Q and Q Brewers Guild",
-    "QUAFF (Quality Ale and Fermentation Fraternity)",
+    "QUAFF",
     "Queen City Homebrew Club",
     "Queers Makin' Beers",
     "Quick's Brew Club",
@@ -2458,14 +2466,24 @@ $club_array = array(
     "Brewly Homebrew Club",
     "Butler County Brewing Society (BCBS)",
     "The Brü Club",
-    "Ninja Homebrewers",
-    "Master Homebrewer Program"
+    "NINJA Homebrewers",
+    "Master Homebrewer Program",
+    "Cider, Homebrew, And Mead Production Specialists (CHAMPS)",
+    "Ottawa's Homebrew Society",
+    "Garner Ale Society"
 );
+
+$club_array_json = json_encode($club_array);
+if ((isset($_SESSION['contestClubs'])) && (!empty($_SESSION['contestClubs']))) {
+    $club_additions = json_decode($_SESSION['contestClubs'],true);
+    $club_array = array_merge($club_array,$club_additions);
+}
 asort($club_array);
 
 $sidebar_date_format = "short";
 $suggested_open_date = time();
 $suggested_close_date = time() + 604800;
+$judging_past = 0;
 
 if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section != "update")) {
 
@@ -2477,15 +2495,17 @@ if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section
         $registration_open = open_or_closed(time(), $row_contest_dates['contestRegistrationOpen'], $row_contest_dates['contestRegistrationDeadline']);
         $entry_window_open = open_or_closed(time(), $row_contest_dates['contestEntryOpen'], $row_contest_dates['contestEntryDeadline']);
         $judge_window_open = open_or_closed(time(), $row_contest_dates['contestJudgeOpen'], $row_contest_dates['contestJudgeDeadline']);
-        $dropoff_window_open = open_or_closed(time(), $row_contest_dates['contestDropoffOpen'], $row_contest_dates['contestDropoffDeadline']);
-        $shipping_window_open = open_or_closed(time(), $row_contest_dates['contestShippingOpen'], $row_contest_dates['contestShippingDeadline']);
+        if ((!empty($row_contest_dates['contestDropoffOpen'])) && (!empty($row_contest_dates['contestDropoffDeadline']))) $dropoff_window_open = open_or_closed(time(), $row_contest_dates['contestDropoffOpen'], $row_contest_dates['contestDropoffDeadline']);
+        else $dropoff_window_open = 1;
+        if ((!empty($row_contest_dates['contestShippingOpen'])) && (!empty($row_contest_dates['contestShippingDeadline']))) $shipping_window_open = open_or_closed(time(), $row_contest_dates['contestShippingOpen'], $row_contest_dates['contestShippingDeadline']);
+        else $shipping_window_open = 1;
         
         $judging_past = judging_date_return();
         $judging_started = FALSE;
 
         if ((check_setup($prefix."judging_locations",$database)) && (check_update("judgingDateEnd", $prefix."judging_locations"))) {
 
-            $query_judging_dates = sprintf("SELECT judgingDate,judgingDateEnd FROM %s",$judging_locations_db_table);
+            $query_judging_dates = sprintf("SELECT judgingDate,judgingDateEnd FROM %s WHERE judgingLocType < '2'",$judging_locations_db_table);
             $judging_dates = mysqli_query($connection,$query_judging_dates) or die (mysqli_error($connection));
             $row_judging_dates = mysqli_fetch_assoc($judging_dates);
             $totalRows_judging_dates = mysqli_num_rows($judging_dates);
@@ -2539,15 +2559,35 @@ if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section
         $entry_open_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestEntryOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
         $entry_closed_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $entry_closed_date, $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], "short", "date-time"); 
 
-        $dropoff_open = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
-        $dropoff_closed = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
-        $dropoff_open_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
-        $dropoff_closed_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], "short", "date-time");
+        $dropoff_open = "";
+        $dropoff_open_sidebar = "";
+        $dropoff_closed = "";
+        $dropoff_closed_sidebar = "";
+        
+        if (!empty($row_contest_dates['contestDropoffOpen'])) {
+            $dropoff_open = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
+            $dropoff_open_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
+        }
 
-        $shipping_open = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
-        $shipping_closed = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
-        $shipping_open_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
-        $shipping_closed_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], "short", "date-time");
+        if (!empty($row_contest_dates['contestDropoffDeadline'])) {
+            $dropoff_closed = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
+            $dropoff_closed_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestDropoffDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], "short", "date-time");
+        }
+
+        $shipping_open = "";
+        $shipping_open_sidebar = "";
+        $shipping_closed = "";
+        $shipping_closed_sidebar = "";
+
+        if (!empty($row_contest_dates['contestShippingOpen'])) {
+            $shipping_open = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
+            $shipping_open_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time");
+        }
+
+        if (!empty($row_contest_dates['contestShippingDeadline'])) {
+            $shipping_closed = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
+            $shipping_closed_sidebar = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestShippingDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], "short", "date-time");
+        }
 
         $judge_open = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestJudgeOpen'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
         $judge_closed = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_contest_dates['contestJudgeDeadline'], $_SESSION['prefsDateFormat'],$_SESSION['prefsTimeFormat'], $sidebar_date_format, "date-time");
@@ -2558,7 +2598,6 @@ if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section
         if ($_SESSION['prefsEval'] == 1) {
 
             if ((empty($row_judging_prefs['jPrefsJudgingOpen'])) || (empty($row_judging_prefs['jPrefsJudgingClosed']))) {
-                
                 
                 if (!empty($date_arr)) {
                     $suggested_open_date = min($date_arr); // Get the start time of the first judging location chronologically
@@ -2591,20 +2630,87 @@ if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section
         $totalRows_entry_count = total_paid_received("",0);
         $total_entries = $totalRows_entry_count;
         $total_paid = get_entry_count("paid");
+        $total_entries_received = get_entry_count("received");
         $comp_paid_entry_limit = FALSE;
         $comp_entry_limit = FALSE;
+
+        // Get styles types and their associated entry limits
+        // If a style type has an entry limit, get an entry count from the db for that style type
+        // If that style type's entry limit is equal to the count, disable the fields and flag
+        // If the flag is present, message the user
+        $style_type_limits = array();
+        $style_type_limits_display = array();
+        $style_type_limits_alert = array();
+
+        $query_style_type_entry_limits = sprintf("SELECT * FROM %s WHERE (styleTypeEntryLimit > 0) OR (styleTypeEntryLimit IS NOT NULL)",$prefix."style_types");
+        $style_type_entry_limits = mysqli_query($connection,$query_style_type_entry_limits) or die (mysqli_error($connection));
+        $row_style_type_entry_limits = mysqli_fetch_assoc($style_type_entry_limits);
+        $totalRows_style_type_entry_limits = mysqli_num_rows($style_type_entry_limits);
+
+        $style_type_entry_count_display = array();
+        $style_type_running_count = 0;
+        $style_type_limit_running_count = 0;
+
+        if ($totalRows_style_type_entry_limits > 0) {
+
+            // Build style type count array
+            
+            do {
+
+                // Default entry limit flag is 0 (false)
+                $style_type_limits[$row_style_type_entry_limits['id']] = 0;
+
+                $style_type_limits_display[$row_style_type_entry_limits['styleTypeName']] = $row_style_type_entry_limits['styleTypeEntryLimit'];
+
+                if ($row_style_type_entry_limits['id'] == 4) $query_style_type_entry_count = sprintf("SELECT COUNT(*) as 'count' FROM %s WHERE brewStyleType='2' OR brewStyleType='3'",$prefix."brewing",$row_style_type_entry_limits['id']);
+                else $query_style_type_entry_count = sprintf("SELECT COUNT(*) as 'count' FROM %s WHERE brewStyleType='%s'",$prefix."brewing",$row_style_type_entry_limits['id']);
+                $style_type_entry_count = mysqli_query($connection,$query_style_type_entry_count) or die (mysqli_error($connection));
+                $row_style_type_entry_count = mysqli_fetch_assoc($style_type_entry_count);
+
+                $style_type_entry_count_display[$row_style_type_entry_limits['styleTypeName']] = array($row_style_type_entry_count['count'],$row_style_type_entry_limits['styleTypeEntryLimit']);
+
+                $style_type_running_count += $row_style_type_entry_count['count'];
+                
+                // Check to see if style type has an entry limit AND if that value is numeric
+                // If so, perform various actions
+                if ((isset($row_style_type_entry_limits['styleTypeEntryLimit'])) && (is_numeric($row_style_type_entry_limits['styleTypeEntryLimit']))) {
+
+                    $style_type_limit_running_count += $row_style_type_entry_limits['styleTypeEntryLimit'];
+                    
+                    // If entry limit reached flag with a 1 (true)
+                    if ($row_style_type_entry_count['count'] >= $row_style_type_entry_limits['styleTypeEntryLimit']) {
+
+                        if ($row_style_type_entry_limits['id'] == 4) {
+                            $style_type_limits[2] = 1;
+                            $style_type_limits[3] = 1;
+                        }
+
+                        else $style_type_limits[$row_style_type_entry_limits['id']] = 1;
+                        
+                        if ($row_style_type_entry_limits['id'] <= 9) $style_type_limits_alert[$row_style_type_entry_limits['id']] = $row_style_type_entry_limits['styleTypeEntryLimit'];
+                        else $style_type_limits_alert[$row_style_type_entry_limits['styleTypeName']] = $row_style_type_entry_limits['styleTypeEntryLimit'];
+                    
+                    }
+
+                }
+            
+            } while ($row_style_type_entry_limits = mysqli_fetch_assoc($style_type_entry_limits));
+
+        }
+
+        if ((!empty($row_limits['prefsEntryLimit'])) && (is_numeric($row_limits['prefsEntryLimit'])) && ($style_type_running_count >= $row_limits['prefsEntryLimit'])) $comp_entry_limit = TRUE;
+
+        if ((!empty($row_limits['prefsEntryLimit'])) && (is_numeric($row_limits['prefsEntryLimit']))) $comp_entry_limit_near = ($row_limits['prefsEntryLimit']*.9); else $comp_entry_limit_near = "";
+        if ((!empty($row_limits['prefsEntryLimit'])) && (is_numeric($row_limits['prefsEntryLimit'])) && (($total_entries > $comp_entry_limit_near) && ($total_entries < $row_limits['prefsEntryLimit']))) $comp_entry_limit_near_warning = TRUE; else $comp_entry_limit_near_warning = FALSE;
+
+        $remaining_entries = 0;
+        if ((($section == "brew") || ($section == "list") || ($section == "pay")) && (!empty($row_limits['prefsUserEntryLimit']))) $remaining_entries = ($row_limits['prefsUserEntryLimit'] - $totalRows_log);
+        else $remaining_entries = 1;
 
         if (isset($totalRows_entry_count)) {
             if ((!empty($row_limits['prefsEntryLimit'])) && ($totalRows_entry_count >= $row_limits['prefsEntryLimit'])) $comp_entry_limit = TRUE;
             if ((!empty($row_limits['prefsEntryLimitPaid'])) && ($total_paid >= $row_limits['prefsEntryLimitPaid'])) $comp_paid_entry_limit = TRUE;
         }
-
-        if (!empty($row_limits['prefsEntryLimit'])) $comp_entry_limit_near = ($row_limits['prefsEntryLimit']*.9); else $comp_entry_limit_near = "";
-        if ((!empty($row_limits['prefsEntryLimit'])) && (($total_entries > $comp_entry_limit_near) && ($total_entries < $row_limits['prefsEntryLimit']))) $comp_entry_limit_near_warning = TRUE; else $comp_entry_limit_near_warning = FALSE;
-
-        $remaining_entries = 0;
-        if ((($section == "brew") || ($section == "list") || ($section == "pay")) && (!empty($row_limits['prefsUserEntryLimit']))) $remaining_entries = ($row_limits['prefsUserEntryLimit'] - $totalRows_log);
-        else $remaining_entries = 1;
 
         if (open_limit($row_judge_count['count'],$row_judging_prefs['jPrefsCapJudges'],$judge_window_open)) $judge_limit = TRUE;
         else $judge_limit = FALSE;
@@ -2621,7 +2727,7 @@ if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section
 
     } // end if ((isset($row_contest_dates)) && (!empty($row_contest_dates)))
 
-}
+} // end if (((strpos($section, "step") === FALSE) && ($section != "setup")) && ($section != "update"))
 
 else {
 
@@ -2712,15 +2818,23 @@ $no_entry_form_array = array("0","1","2","E","C");
 if ($logged_in) $location_target = "_blank";
 else $location_target = "_self";
 
-// $encryption_key = base64_encode(openssl_random_pseudo_bytes(32));
-$encryption_key = "8sQHfMk8rinRtA/Frhm+AWrSgOmkcbu+FxIUGy9Fq5I=";
-
-if ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "BA")) $optional_info_styles = array();
-elseif ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "AABC")) $optional_info_styles = array("12-01","14-08","17-03","18-04","18-05","19-05","19-07","16-01","19-01","19-02","19-03","19-04","19-06","20-02","20-03");
+if ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "BA")) {
+    $optional_info_styles = array();
+}
+elseif ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "AABC")) {
+    $optional_info_styles = array("12-01","14-08","17-03","18-04","18-05","19-05","19-07","16-01","19-01","19-02","19-03","19-04","19-06","20-02","20-03");
+}
+elseif ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "AABC2022")) {
+    $optional_info_styles = array("07-03","12-01","14-08","17-03","18-04","18-05","16-01","19-01","19-02","19-03","19-04","19-05","19-06","19-07","19-08","19-09","19-10","19-11","19-12","19-13","20-02","20-03","16-08");
+}
+elseif ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "NWCiderCup")) {
+    $optional_info_styles = array("C4-A","C4-B","C5-A","C8-A","C8-B","C8-C","C9-A","C9-B","C9-C");
+}
 else {
     $optional_info_styles = array("21-B","28-A","30-B","33-A","33-B","34-B","M2-C","M2-D","M2-E","M3-A","M3-B","M4-B","M4-C","7-C","M1-A","M1-B","M1-C","M2-A","M2-B","M4-A","C1-A","C1-B","C1-C");
     if ((isset($_SESSION['prefsStyleSet'])) && ($_SESSION['prefsStyleSet'] == "BJCP2021")) $optional_info_styles[] = "25-B";
 }
+
 $results_method = array("0" => "By Table/Medal Group", "1" => "By Style", "2" => "By Sub-Style");
 
 if (HOSTED) $_SESSION['prefsCAPTCHA'] = 1;
@@ -2743,5 +2857,154 @@ if (isset($_SESSION['prefsStyleSet'])) {
         $specialty_ipa_subs = array("21-B1","21-B2","21-B3","21-B4","21-B5","21-B6","21-B7");
         $historical_subs = array("27-A1","27-A2","27-A3","27-A4","27-A5","27-A6","27-A7","27-A8","27-A9");
     }
-} 
+}
+
+// Determine if MariaDB is being used instead of MySQL.
+$db_version = $connection -> server_info;
+$db_maria = FALSE;
+if (strpos(strtolower($db_version), "mariadb") !== false) $db_maria = TRUE;
+
+// Generate a unique encryption key on each page load.
+if ((!isset($_SESSION['encryption_key'])) || (empty($_SESSION['encryption_key']))) $_SESSION['encryption_key'] = base64_encode(openssl_random_pseudo_bytes(32));
+
+/**
+ * Failsafe for selected styles.
+ * If the session variable is empty, check the DB table column.
+ * If the column is empty, regenerate.
+ * If the column has data, check if it JSON. If so, repopulate
+ * session variable. If not, regenerate.
+ */
+
+$regenerate_selected_styles = FALSE;
+
+if ((empty($_SESSION['prefsSelectedStyles'])) && (strpos($section, "step") === FALSE)) {
+
+    $query_selected_styles = sprintf("SELECT prefsSelectedStyles FROM %s WHERE id='1';",$prefix."preferences");
+    $selected_styles = mysqli_query($connection,$query_selected_styles) or die (mysqli_error($connection));
+    $row_selected_styles = mysqli_fetch_assoc($selected_styles);
+
+    if (empty($row_selected_styles['prefsSelectedStyles'])) $regenerate_selected_styles = TRUE;
+    else {
+        
+        $is_styles_json = json_decode($row_selected_styles['prefsSelectedStyles']);
+        if (json_last_error() === JSON_ERROR_NONE) $styles_json_data = TRUE;
+        else $styles_json_data = FALSE;
+
+        if ($styles_json_data) $_SESSION['prefsSelectedStyles'] = $row_selected_styles['prefsSelectedStyles'];
+        else $regenerate_selected_styles = TRUE;
+    
+    }
+
+    if ($regenerate_selected_styles) {
+
+        $update_selected_styles = array();
+        $prefsStyleSet = $_SESSION['prefsStyleSet'];
+
+        if (HOSTED) {
+            
+            $query_styles_default = sprintf("SELECT id, brewStyle, brewStyleGroup, brewStyleNum, brewStyleVersion FROM `bcoem_shared_styles` WHERE brewStyleVersion='%s'", $prefsStyleSet);
+            $styles_default = mysqli_query($connection,$query_styles_default);
+            $row_styles_default = mysqli_fetch_assoc($styles_default);
+
+            if ($row_styles_default) {
+
+                do {
+
+                    $update_selected_styles[$row_styles_default['id']] = array(
+                        'brewStyle' => $row_styles_default['brewStyle'],
+                        'brewStyleGroup' => $row_styles_default['brewStyleGroup'],
+                        'brewStyleNum' => $row_styles_default['brewStyleNum'],
+                        'brewStyleVersion' => $row_styles_default['brewStyleVersion']
+                    );
+
+                } while($row_styles_default = mysqli_fetch_assoc($styles_default));
+
+                    
+            }
+            
+            $query_styles_custom = sprintf("SELECT id, brewStyle, brewStyleGroup, brewStyleNum, brewStyleVersion FROM %s WHERE brewStyleOwn='custom'", $prefix."styles");
+            $styles_custom = mysqli_query($connection,$query_styles_custom);
+            $row_styles_custom = mysqli_fetch_assoc($styles_custom);
+
+            if ($row_styles_custom) {
+
+                do {
+
+                    $update_selected_styles[$row_styles_custom['id']] = array(
+                        'brewStyle' => sterilize($row_styles_custom['brewStyle']),
+                        'brewStyleGroup' => sterilize($row_styles_custom['brewStyleGroup']),
+                        'brewStyleNum' => sterilize($row_styles_custom['brewStyleNum']),
+                        'brewStyleVersion' => sterilize($row_styles_custom['brewStyleVersion'])
+                    );
+
+                } while($row_styles_custom = mysqli_fetch_assoc($styles_custom));
+
+                
+            }
+        
+        } // end if (HOSTED)
+            
+        else {
+
+            $query_styles_default = sprintf("SELECT id, brewStyle, brewStyleGroup, brewStyleNum, brewStyleVersion FROM %s WHERE brewStyleVersion='%s'", $prefix."styles", $prefsStyleSet);
+            $styles_default = mysqli_query($connection,$query_styles_default);
+            $row_styles_default = mysqli_fetch_assoc($styles_default);
+
+            if ($row_styles_default) {
+                do {
+                    $update_selected_styles[$row_styles_default['id']] = array(
+                        'brewStyle' => sterilize($row_styles_default['brewStyle']),
+                        'brewStyleGroup' => sterilize($row_styles_default['brewStyleGroup']),
+                        'brewStyleNum' => sterilize($row_styles_default['brewStyleNum']),
+                        'brewStyleVersion' => sterilize($row_styles_default['brewStyleVersion'])
+                    );
+                } while($row_styles_default = mysqli_fetch_assoc($styles_default));
+            }
+
+        } // end else
+
+        $update_selected_styles = json_encode($update_selected_styles);
+
+        $update_table = $prefix."preferences";
+        $data = array(
+            'prefsSelectedStyles' => $update_selected_styles
+        );
+        $db_conn->where ('id', 1);
+        $result = $db_conn->update ($update_table, $data);
+        if (!$result) {
+            $error_output[] = $db_conn->getLastError();
+            $errors = TRUE;
+        }
+
+        // Empty the prefs session variable
+        // Will trigger the session to reset the variables in common.db.php upon reload after redirect
+        unset($_SESSION['prefs'.$prefix_session]);
+
+    }
+
+}
+
+$default_to = "prost";
+$default_from = "noreply";
+
+$drop_ship_dates = array();
+if (isset($row_contest_dates)) {
+        // Get drop-off and shipping deadlines, if any.
+    $drop_ship_dates = array(
+        $row_contest_dates['contestDropoffDeadline'], 
+        $row_contest_dates['contestShippingDeadline']
+    );
+    // Determine the earliest of the two dates.
+    // If no drop-off and shipping deadlines specified, default to entry deadline date since it's required.
+    if (!empty($drop_ship_dates)) $drop_ship_deadline = min($drop_ship_dates);
+    else $drop_ship_deadline = $row_contest_dates['contestEntryDeadline'];
+
+    // Specify the latest date users can edit their entries.
+    // If the contestEntryEditDeadline column has a value, and it's value is less than the drop_shop_deadline var value, default to it.
+    // Otherwise, use the drop_ship_deadline var value.
+    if ((isset($row_contest_dates['contestEntryEditDeadline'])) && (!empty($row_contest_dates['contestEntryEditDeadline'])) && ($row_contest_dates['contestEntryEditDeadline'] < $drop_ship_deadline)) $entry_edit_deadline = $row_contest_dates['contestEntryEditDeadline'];
+    else $entry_edit_deadline = $drop_ship_deadline;
+    $entry_edit_deadline_date = getTimeZoneDateTime($_SESSION['prefsTimeZone'], $entry_edit_deadline, $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "long", "date-time");
+}
+
 ?>

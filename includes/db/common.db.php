@@ -15,7 +15,6 @@ $_SESSION['session_set_'.$prefix_session] = $prefix_session;
 
 // Check to see if the session_set variable is corrupted or hijacked. If so, destroy the session and reset.
 if (((!empty($_SESSION['session_set_'.$prefix_session])) && ($_SESSION['session_set_'.$prefix_session] != $prefix_session)) || ((!isset($_SESSION['session_set_'.$prefix_session])) || (empty($_SESSION['session_set_'.$prefix_session])))) {
-
 	session_unset();
 	session_destroy();
 	session_write_close();
@@ -23,7 +22,6 @@ if (((!empty($_SESSION['session_set_'.$prefix_session])) && ($_SESSION['session_
 	session_start();
 	session_regenerate_id(true);
 	$_SESSION['session_set_'.$prefix_session] = $prefix_session;
-
 }
 
 if (($section != "update") && (empty($_SESSION['dataCheck'.$prefix_session]))) {
@@ -71,7 +69,7 @@ if ((!isset($_SESSION['prefs'.$prefix_session])) || (empty($_SESSION['prefs'.$pr
 		if ($totalRows_prefs > 0) {
 			foreach ($row_prefs as $key => $value) {
 				if ($key != "id") $_SESSION[$key] = $value;
-			}	
+			}
 		}
 
 		if (SINGLE) $query_judging_prefs = sprintf("SELECT * FROM %s WHERE id='%s'", $prefix."judging_preferences",$_SESSION['comp_id']);
@@ -120,6 +118,10 @@ if ((!isset($_SESSION['prefs'.$prefix_session])) || (empty($_SESSION['prefs'.$pr
 
 			include(INCLUDES.'ba_constants.inc.php');
 
+			/*
+			if (HOSTED) $query_ba_style = sprintf("SELECT * FROM `bcoem_shared_styles` WHERE brewStyleVersion='BA' UNION ALL SELECT * FROM `%s` WHERE brewStyleVersion='BA'", $prefix."styles");
+			else 
+			*/
 			$query_ba_style = sprintf("SELECT * FROM %s WHERE brewStyleVersion='BA'", $prefix."styles");
 			$ba_style = mysqli_query($connection,$query_ba_style) or die (mysqli_error($connection));
 			$row_ba_style = mysqli_fetch_assoc($ba_style);
@@ -364,7 +366,7 @@ if ($section != "update") {
 	$judge_limits = mysqli_query($connection,$query_judge_limits) or die (mysqli_error($connection));
 	$row_judge_limits = mysqli_fetch_assoc($judge_limits);
 
-	$query_contest_dates = sprintf("SELECT contestCheckInPassword, contestRegistrationOpen, contestRegistrationDeadline, contestJudgeOpen, contestJudgeDeadline, contestEntryOpen, contestEntryDeadline, contestShippingOpen, contestShippingDeadline, contestDropoffOpen, contestDropoffDeadline FROM %s WHERE id=1", $prefix."contest_info");
+	$query_contest_dates = sprintf("SELECT contestCheckInPassword, contestRegistrationOpen, contestRegistrationDeadline, contestJudgeOpen, contestJudgeDeadline, contestEntryOpen, contestEntryDeadline, contestShippingOpen, contestShippingDeadline, contestDropoffOpen, contestDropoffDeadline, contestEntryEditDeadline FROM %s WHERE id=1", $prefix."contest_info");
 	$contest_dates = mysqli_query($connection,$query_contest_dates) or die (mysqli_error($connection));
 	$row_contest_dates = mysqli_fetch_assoc($contest_dates);
 }

@@ -1,4 +1,15 @@
-<?php 
+<?php
+
+/*
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (!isset($base_url)))) {
+  $redirect = "../../403.php";
+  $redirect_go_to = sprintf("Location: %s", $redirect);
+  header($redirect_go_to);
+  exit();
+}
+*/
+
 $eid = "";
 $uid = "";
 $style = "";
@@ -16,6 +27,7 @@ $mead_cider = FALSE;
 $beer = FALSE;
 $cider = FALSE;
 $mead = FALSE;
+$nw_cider = FALSE;
 $scored_previously = FALSE;
 $consensus_match = FALSE;
 $auto_logout_extension = FALSE;
@@ -27,6 +39,12 @@ $other_judge_consensus_scores = "";
 $other_judge_previous_consensus = array();
 $my_consensus_score = "";
 $evalPosition = "";
+
+/*
+if (HOSTED) $styles_db_table = "bcoem_shared_styles";
+else
+*/
+$styles_db_table = $prefix."styles";
 
 /**
  * Default judge range is 7 points, a commonly accepted
@@ -128,7 +146,7 @@ if ($judging_scoresheet == 2) {
   $scoresheet_version = $label_checklist_version;
 }
 
-if ($judging_scoresheet == 3) {
+if (($judging_scoresheet == 3) || ($judging_scoresheet == 4)) {
   $output_form = "structured_output.eval.php";
   $scoresheet_form = "structured_scoresheet.eval.php";
   $process_type = "process-eval-structured";
@@ -141,6 +159,9 @@ if ($judging_scoresheet == 3) {
  * that the scoresheet is being added by a non-admin
  * on-the-fly.
  */
+
+$query_style = "";
+
 if ($action == "add") {
 
   $submit_button_text = $label_submit_evaluation;
@@ -165,7 +186,15 @@ if ($action == "add") {
   $row_entry_info = mysqli_fetch_assoc($entry_info);
   $totalRows_entry_info = mysqli_num_rows($entry_info);
 
-  $query_style = sprintf("SELECT * FROM %s WHERE brewStyleGroup = '%s' AND brewStyleNum = '%s' AND brewStyleVersion='%s'", $prefix."styles", $row_entry_info['brewCategorySort'], $row_entry_info['brewSubCategory'], $_SESSION['prefsStyleSet']);
+  if ($totalRows_entry_info > 0) {
+    
+    /*
+    if (HOSTED) $query_style = sprintf("SELECT * FROM %s WHERE brewStyleGroup = '%s' AND brewStyleNum = '%s' AND brewStyleVersion='%s' UNION ALL SELECT * FROM %s WHERE brewStyleGroup = '%s' AND brewStyleNum = '%s' AND brewStyleVersion='%s'", $styles_db_table, $row_entry_info['brewCategorySort'], $row_entry_info['brewSubCategory'], $_SESSION['prefsStyleSet'], $prefix."styles", $row_entry_info['brewCategorySort'], $row_entry_info['brewSubCategory'], $_SESSION['prefsStyleSet']);
+    else
+    */
+    $query_style = sprintf("SELECT * FROM %s WHERE brewStyleGroup = '%s' AND brewStyleNum = '%s' AND brewStyleVersion='%s'", $prefix."styles", $row_entry_info['brewCategorySort'], $row_entry_info['brewSubCategory'], $_SESSION['prefsStyleSet']);
+  }
+
 }
 
 /**
@@ -200,41 +229,53 @@ if ($action == "edit") {
     $row_entry_info = mysqli_fetch_assoc($entry_info);
     $totalRows_entry_info = mysqli_num_rows($entry_info);
     
-    $query_style = sprintf("SELECT * FROM %s WHERE id='%s'", $prefix."styles", $style);
+    if ($totalRows_entry_info > 0) {
+      /*
+      if (HOSTED) $query_style = sprintf("SELECT * FROM %s WHERE id='%s' UNION ALL SELECT * FROM %s WHERE id='%s'", $styles_db_table, $style, $prefix."styles", $style);
+      else 
+      */
+      $query_style = sprintf("SELECT * FROM %s WHERE id='%s'", $prefix."styles", $style);
+    }
 
   }
 
 }
 
-$style = mysqli_query($connection,$query_style) or die (mysqli_error($connection));
-$row_style = mysqli_fetch_assoc($style);
-$totalRows_style = mysqli_num_rows($style);
-
-$judge_scores = eval_exits($row_entry_info['id'],"judge_scores",$dbTable);
-if ($action == "add") $flight_count_info = flight_count_info($id,0);
-if ($action == "edit") $flight_count_info = flight_count_info($eid,0);
-
-if (!empty($judge_scores)) {
-  $scored_previously = TRUE;
-  $consensus_scores = eval_exits($row_entry_info['id'],"consensus_scores",$dbTable);
-  if (count(array_unique($consensus_scores)) === 1) $consensus_match = TRUE;
-  $other_judge_scores .= sprintf("%s: ".rtrim(display_array_content($judge_scores,2),", "),$label_judge_score);
-  $other_judge_consensus_scores .= sprintf("%s: ".rtrim(display_array_content($consensus_scores,2),", "),$label_judge_consensus_scores);
-  if (isset($row_eval['evalFinalScore'])) $my_consensus_score .= sprintf("%s: <span id=\"my-consensus-score\">".$row_eval['evalFinalScore']."</span>",$label_your_consensus_score);
+if (!empty($query_style)) {
+  $style = mysqli_query($connection,$query_style) or die (mysqli_error($connection));
+  $row_style = mysqli_fetch_assoc($style);
+  $totalRows_style = mysqli_num_rows($style);
 }
 
-if (($action == "edit") && (!$consensus_match)) $consensus_scores = array_diff($consensus_scores,array($row_eval['evalFinalScore']));
+if ($totalRows_entry_info > 0) {
+  $judge_scores = eval_exits($row_entry_info['id'],"judge_scores",$dbTable);
+  if ($action == "add") $flight_count_info = flight_count_info($id,0);
+  if ($action == "edit") $flight_count_info = flight_count_info($eid,0);
 
-if (isset($_POST['entry_number'])) {
-  
-  // Get table info
-  $query_flight_info = sprintf("SELECT flightTable FROM %s WHERE flightEntryID='%s'",$prefix."judging_flights",$row_entry_info['id']);
-  $flight_info = mysqli_query($connection,$query_flight_info) or die (mysqli_error($connection));
-  $row_flight_info = mysqli_fetch_assoc($flight_info);
+  if (!empty($judge_scores)) {
+    $scored_previously = TRUE;
+    $consensus_scores = eval_exits($row_entry_info['id'],"consensus_scores",$dbTable);
+    if (count(array_unique($consensus_scores)) === 1) $consensus_match = TRUE;
+    $other_judge_scores .= sprintf("%s: ".rtrim(display_array_content($judge_scores,2),", "),$label_judge_score);
+    $other_judge_consensus_scores .= sprintf("%s: ".rtrim(display_array_content($consensus_scores,2),", "),$label_judge_consensus_scores);
+    if (isset($row_eval['evalFinalScore'])) $my_consensus_score .= sprintf("%s: <span id=\"my-consensus-score\">".$row_eval['evalFinalScore']."</span>",$label_your_consensus_score);
+  }
 
-  if ($row_flight_info) $filter = $row_flight_info['flightTable'];
+  if (($action == "edit") && (!$consensus_match)) $consensus_scores = array_diff($consensus_scores,array($row_eval['evalFinalScore']));
+
+  if (isset($_POST['entry_number'])) {
+    
+    // Get table info
+    $query_flight_info = sprintf("SELECT flightTable FROM %s WHERE flightEntryID='%s'",$prefix."judging_flights",$row_entry_info['id']);
+    $flight_info = mysqli_query($connection,$query_flight_info) or die (mysqli_error($connection));
+    $row_flight_info = mysqli_fetch_assoc($flight_info);
+
+    if ($row_flight_info) $filter = $row_flight_info['flightTable'];
+
+  }
 
 }
+
 
 /**
  * Included Descriptors are used by multiple functions.
@@ -249,6 +290,12 @@ if ($entry_found) {
   if ($row_style['brewStyleType'] == 2) $cider = TRUE;
   elseif ($row_style['brewStyleType'] == 3) $mead = TRUE;
   else $beer = TRUE;
+
+  if ($judging_scoresheet == 4) {
+    $cider = TRUE;
+    $nw_cider = TRUE;
+    $scoresheet_version .= " &ndash; ".$_SESSION['style_set_long_name'];
+  }
 
   // If style is Cider (2) or Mead (3), only use full scoresheet instad of checklist
   if ((($judging_scoresheet == 1) || ($judging_scoresheet == 2)) && (($cider) || ($mead))) {
@@ -283,12 +330,13 @@ if ($entry_found) {
   // Build entry info display
   $entry_info_html .= "<div class=\"alert alert-teal\">";
   $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
-  $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_entry_number."</strong></div>";
+  $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_number."</strong></div>";
   $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$number."</div>";
   $entry_info_html .= "</div>";
 
   $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
-  $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$_SESSION['style_set_short_name']." ".$label_style."</strong></div>";
+  if ($nw_cider) $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$_SESSION['style_set_short_name']." ".$label_category."</strong></div>";
+  else $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$_SESSION['style_set_short_name']." ".$label_style."</strong></div>";
   $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">";
 
   // Style Links
@@ -343,7 +391,8 @@ if ($entry_found) {
 
   if (!empty($row_entry_info['brewInfo'])) {
     $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
-    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_required_info."</strong></div>";
+    if (($_SESSION['prefsStyleSet'] == "BJCP2021") && ($style_num == "2A")) $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_regional_variation."</strong></div>";
+    else $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_required_info."</strong></div>";
     $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".str_replace("^", " - ", $row_entry_info['brewInfo'])."</div>";
     $entry_info_html .= "</div>";
   }
@@ -369,6 +418,13 @@ if ($entry_found) {
     $entry_info_html .= "</div>";
   }
 
+  if (!empty($row_entry_info['brewMead3'])) {
+    $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_strength."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewMead3']."</div>";
+    $entry_info_html .= "</div>";
+  }
+
   if (!empty($row_entry_info['brewMead2'])) {
     $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
     $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_sweetness."</strong></div>";
@@ -376,10 +432,17 @@ if ($entry_found) {
     $entry_info_html .= "</div>";
   }
 
-  if (!empty($row_entry_info['brewMead3'])) {
+  if (($_SESSION['prefsStyleSet'] == "NWCiderCup") && (!empty($row_entry_info['brewSweetnessLevel']))) {
     $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
-    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_strength."</strong></div>";
-    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewMead3']."</div>";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_final_gravity."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewSweetnessLevel']."</div>";
+    $entry_info_html .= "</div>";
+  }
+
+  if (!empty($row_entry_info['brewABV'])) {
+    $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_abv."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewABV']."&#37;</div>";
     $entry_info_html .= "</div>";
   }
 
@@ -390,10 +453,40 @@ if ($entry_found) {
     $entry_info_html .= "</div>";
   }
 
+  if ((!empty($row_entry_info['brewPouring'])) && ((!empty($row_entry_info['brewStyleType'])) && ($row_entry_info['brewStyleType'] == 1))) {
+    
+    $pouring_arr = json_decode($row_entry_info['brewPouring'],true);
+
+    $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_pouring."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$pouring_arr['pouring']."</div>";
+    $entry_info_html .= "</div>";
+
+    if ((isset($pouring_arr['pouring_notes'])) && (!empty($pouring_arr['pouring_notes'])))  {
+      $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+      $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_pouring_notes."</strong></div>";
+      $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$pouring_arr['pouring_notes']."</div>";
+      $entry_info_html .= "</div>";
+    }
+
+    $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_rouse_yeast."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$pouring_arr['pouring_rouse']."</div>";
+    $entry_info_html .= "</div>";
+
+  }
+
   if (!empty($row_entry_info['brewStaffNotes'])) {
     $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
-    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_notes."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_notes." &ndash; ".$label_staff."</strong></div>";
     $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewStaffNotes']."</div>";
+    $entry_info_html .= "</div>";
+  }
+
+  if (!empty($row_entry_info['brewAdminNotes'])) {
+    $entry_info_html .= "<div class=\"row bcoem-admin-element\">";
+    $entry_info_html .= "<div class=\"col col-lg-3 col-md-4 col-sm-4 col-xs-12\"><strong>".$label_notes." &ndash; ".$label_admin_short."</strong></div>";
+    $entry_info_html .= "<div class=\"col col-lg-9 col-md-8 col-sm-8 col-xs-12\">".$row_entry_info['brewAdminNotes']."</div>";
     $entry_info_html .= "</div>";
   }
 
@@ -442,18 +535,35 @@ if ($entry_found) {
   
   // Sticky score
   $sticky_score_tally = "<div id=\"sticky-score\" class=\"pull-right\">";
-  $sticky_score_tally .= "<section style=\"width: 100%\">";
-  $sticky_score_tally .= "<p style=\"font-size: 1.5em\">";
-  $sticky_score_tally .= "<span id=\"scoring-guide-badge\" class=\"label label-default sticky-glow\">".$label_score.": <span id=\"judge-score\">".$eval_score."</span> <span id=\"scoring-guide\"></span></span>";
-  $sticky_score_tally .= "<a style=\"padding-top: 5px; font-size: .75em\"\" id=\"show-hide-status-btn\" class=\"pull-right\" data-toggle=\"collapse\" href=\"#scoring-guide-status\" aria-controls=\"scoring-guide-status\"><span id=\"toggle-icon\" class=\"fa fa-chevron-circle-up\"></span></a>";
-  $sticky_score_tally .= "</p>";
-  $sticky_score_tally .= "</section>";
+  $sticky_score_tally .= "<div class=\"pull-right\" style=\"display:block; font-size: 1.5em; padding-right: 5px;  margin-bottom: 15px;\">";
+  $sticky_score_tally .= "<i style=\"padding: 5px 5px 0 0; font-size: .75em\"\" id=\"warning-indicator-icon\" class=\"fa fa-exclamation-triangle text-danger\"></i>";
+  $sticky_score_tally .= "<a style=\"padding-top: 5px; font-size: .75em\"\" id=\"show-hide-status-btn\" data-toggle=\"collapse\" href=\"#scoring-guide-status\" aria-controls=\"scoring-guide-status\"><span id=\"toggle-icon\" class=\"fa fa-chevron-circle-up\"></span></a>";
+  $sticky_score_tally .= "</div>";
+  
+  if (!$nw_cider) { 
+    $sticky_score_tally .= "<section style=\"width: 100%; margin-bottom: 15px;\">";
+    $sticky_score_tally .= "<div style=\"font-size: 1.5em\">";
+    $sticky_score_tally .= "<span id=\"scoring-guide-badge\" class=\"label label-default sticky-glow\">".$label_score.": <span id=\"judge-score\">".$eval_score."</span> <span id=\"scoring-guide\"></span></span>";
+    $sticky_score_tally .= "</div>";
+    $sticky_score_tally .= "</section>";
+  }
   
   $sticky_score_tally .= "<section position: absolute; width: 100%; background-color: rgba(220,220,220,0.80);\" id=\"scoring-guide-status\" class=\"well sticky-glow collapse in\">";
   
+  // Elapsed time
   $sticky_score_tally .= "<p><span id=\"elapsed-time-p\"><i class=\"fa fa-clock\"></i> <strong>".$label_elapsed_time.": <span id=\"elapsed-time\"></span></strong></span><br><small id=\"session-end-eval-p\">".$label_auto_log_out." <span id=\"session-end-eval\"></span></small>";
   $sticky_score_tally .= "</p>";
+
+  // 15-minute courtesy warning.
+  $sticky_score_tally .= "<p id=\"courtesy-alert-warning-15\">";
+  $sticky_score_tally .= "<span id=\"courtesy-alert-warning-15-header\"><i class=\"fa fa-exclamation-circle\"></i> <strong>".$label_please_note."<span id=\"elapsed-time\"></strong></span>";
+  $sticky_score_tally .= "<br>";
+  $sticky_score_tally .= "<small>";
+  $sticky_score_tally .= $evaluation_info_071;
+  $sticky_score_tally .= "</small>";
+  $sticky_score_tally .= "</p>";
   
+  // Show score range and consensus statuses if scored previously
   if ($scored_previously) {
     $sticky_score_tally .= "<p style=\"padding-top: 10px;\">";
     $sticky_score_tally .= "<i id=\"scoring-guide-status-icon\" class=\"fa fa-chevron-circle-right\"></i> <span id=\"scoring-guide-status-msg\"><strong>".$label_score_range_status."</strong></span>";
@@ -520,6 +630,7 @@ if ($eval_prevent_edit) $header_elements .= sprintf("<p>%s</p>",$header_text_104
 <!-- https://github.com/seiyria/bootstrap-slider -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/bootstrap-slider.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-slider/11.0.2/css/bootstrap-slider.min.css" />
+
 <script>
 var judgeScores = <?php echo json_encode($judge_scores); ?>;
 var consensusScores = <?php echo json_encode($consensus_scores); ?>;
@@ -543,19 +654,26 @@ var score_range_ok = "<?php echo $label_score_range_ok; ?>";
 var score_range_ok_text = "<?php echo $evaluation_info_047; ?>";
 var score_range_ok_output = "<span class=\"text-success\"><strong>" + score_range_ok + "</strong><br><small><strong>" + score_range_ok_text + "</strong></small></span>";
 </script>
-<script src="<?php echo $base_url;?>js_includes/eval_checks.min.js"></script>
+<script src="<?php echo $js_url; ?>eval_checks.min.js"></script>
 <script>
 $(document).ready(function() {
-    <?php if ($action == "edit") { ?>
-    displayCalc(<?php echo $eval_score; ?>);
-    checkScoreRange(<?php echo $eval_score; ?>,judgeScores,score_range,0);
-    checkConsensus(consensusScores);
-    <?php }?>
-    $('#show-hide-status-btn').click(function(){
+  
+  $("#courtesy-alert-warning-15").hide();
+  $("#warning-indicator-icon").hide();
+  
+  <?php if ($action == "edit") { ?>
+  displayCalc(<?php echo $eval_score; ?>);
+  checkScoreRange(<?php echo $eval_score; ?>,judgeScores,score_range,0);
+  checkConsensus(consensusScores);
+  <?php }?>
+  
+  $('#show-hide-status-btn').click(function(){
       $('#toggle-icon').toggleClass('fa-chevron-circle-up fa-chevron-circle-down');
-    });
+  });
+
 });
 </script>
+
 <style type="text/css">
 
 .scoring-guide-bottom-text {
@@ -592,6 +710,7 @@ $(document).ready(function() {
 }
 
 </style>
+
 <?php
 $evalPos = FALSE; 
 if ((isset($row_eval['evalPosition'])) && (!empty($row_eval['evalPosition']))) {
@@ -605,7 +724,9 @@ echo $entry_info_html;
 if ($entry_found) {
   echo $sticky_score_tally;
 ?>
-<form class="hide-loader-form-submit" id="form1" name="form1" role="form" data-toggle="validator" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $process_type; ?>&action=<?php echo $action; ?>&view=<?php echo $view; ?>&dbTable=<?php echo $prefix."evaluation"; if ($action == "edit") echo "&id=".$id; ?>" method="post">
+
+<form class="hide-loader-form-submit" id="scoresheet-form" name="scoresheet-form" role="form" data-toggle="validator" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $process_type; ?>&action=<?php echo $action; ?>&view=<?php echo $view; ?>&dbTable=<?php echo $prefix."evaluation"; if ($action == "edit") echo "&id=".$id; ?>" method="post">
+<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
 <!-- Provide information about the judge -->
 <input type="hidden" name="evalJudgeInfo" value="<?php if ($action == "add") echo $judge_id; else echo $row_eval['evalJudgeInfo']; ?>">
 <!-- Type of scoresheet -->
@@ -630,6 +751,8 @@ if ($entry_found) {
     <div id="ordinal-help-total" class="help-block small text-danger"><?php echo $evaluation_info_051; ?></div>
   </div>
 </div>
+
+<?php if (!$nw_cider) { ?>
 <div class="form-group">
   <label for="evalBottle"><?php echo $label_bottle_inspection; ?></label>
   <div class="checkbox">
@@ -642,8 +765,20 @@ if ($entry_found) {
   <label for="evalBottleNotes"><?php echo $label_bottle_inspection_comments; ?></label>
   <input type="text" class="form-control" name="evalBottleNotes" id="evalBottleNotes" maxlength="255" placeholder="" value="<?php if ($action == "edit") echo $row_eval['evalBottleNotes']; ?>">
 </div>
+<?php } ?>
+
 <?php include (EVALS.$scoresheet_form); ?>
 <h3 class="section-heading"><?php echo $label_score; ?></h3>
+
+<?php if (($_SESSION['jPrefsScoresheet'] == 4) && ($cider)) { ?>
+<div class="form-group">
+  <label for="evalOverallScore"><?php echo $label_your_score; ?></label>
+  <input type="number" min="5" max="50" name="evalOverallScore" id="evalOverallScore" class="form-control" placeholder="" data-error="<?php echo $evaluation_info_103; ?>" value="<?php if ($action == "edit") echo $row_eval['evalOverallScore']; ?>"required>
+  <div class="help-block small"><?php echo $evaluation_info_102; ?></div>
+  <div class="help-block small with-errors"></div>
+</div>
+<?php } ?>
+
 <div class="form-group">
   <label for="evalFinalScore"><?php echo $label_assigned_score; ?></label>
   <input type="number" min="5" max="50" name="evalFinalScore" id="evalFinalScore" class="form-control" placeholder="" data-error="<?php echo $evaluation_info_068; ?>" value="<?php if ($action == "edit") echo $row_eval['evalFinalScore']; ?>" onblur="checkConsensus(consensusScores)" required>
@@ -826,62 +961,69 @@ if ($entry_found) {
     </div>
   </div>
 </div>
-<?php } 
-
-if ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0)) { ?>
-
+<?php } ?>
+<script src="<?php echo $js_url; ?>save_my_form.min.js"></script>
 <script type="text/javascript">
 var style_type = <?php echo $row_style['brewStyleType']; ?>;
+var edit = <?php if ($action == "edit") echo "true"; else echo "false"; ?>;
+$(function() {
+    $('#scoresheet-form').saveMyForm();
+});
+</script>
+
+
+
+<?php if ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0)) { ?>
+<script type="text/javascript">
 var min_words = <?php echo $_SESSION['jPrefsMinWords']; ?>;
 var min_wordcount_reached = '<strong class="text-success"><?php echo $evaluation_info_089; ?></strong> <?php echo $evaluation_info_090; ?>';
 var min_wordcount_not = '<?php echo $evaluation_info_091; ?>';
 var word_count_so_far = '<?php echo $evaluation_info_092; ?>';
-var edit = <?php if ($action == "edit") echo "true"; else echo "false"; ?>;
+</script>
 
-<?php if ($judging_scoresheet == 3) { ?>
-
-if (edit) var min_words_overall_ok = true;
-else var min_words_overall_ok = false;
-
-function min_words_ok() {
-    $('#submitForm').attr('disabled','disabled');
-    if (min_words_overall_ok) {
-        $('#submitForm').removeAttr('disabled');
-        $('#min-words-message').hide();
-    } else {
-      $('#min-words-message').show();
-      $('#min-words-message').html('<i class="fa fa-lg fa-exclamation-circle"></i> <strong><?php echo $evaluation_info_093; ?></strong>');
+<?php if (($judging_scoresheet == 3) || ($judging_scoresheet == 4)) { ?>
+<script type="text/javascript">
+    if (edit) var min_words_overall_ok = true;
+    else var min_words_overall_ok = false;
+    function min_words_ok() {
+        $('#submitForm').attr('disabled','disabled');
+        if (min_words_overall_ok) {
+            $('#submitForm').removeAttr('disabled');
+            $('#min-words-message').hide();
+        } else {
+          $('#min-words-message').show();
+          $('#min-words-message').html('<i class="fa fa-lg fa-exclamation-circle"></i> <strong><?php echo $evaluation_info_093; ?></strong>');
+        }
     }
-}
 
-$(document).ready(function() {
+    $(document).ready(function() {
 
-    $('#min-words-message').hide();
+        $('#min-words-message').hide();
 
-    $('#evalOverallComments').on('keyup keydown click onmouseout oninput', function() {
+        $('#evalOverallComments').on('keyup keydown click onmouseout oninput', function() {
 
-        var currentWordCount = $('#evalOverallComments').val().match(/\S+/g).length;
+            var currentWordCount = $('#evalOverallComments').val().match(/\S+/g).length;
 
-        if (currentWordCount >= min_words) {
-            min_words_overall_ok = true;
-            $('#evalOverallComments-words').html(min_wordcount_reached + currentWordCount);      
-        } 
+            if (currentWordCount >= min_words) {
+                min_words_overall_ok = true;
+                $('#evalOverallComments-words').html(min_wordcount_reached + currentWordCount);      
+            } 
 
-        else {
-           min_words_overall_ok = false;
-           $('#evalOverallComments-words').html('<strong> ' + min_wordcount_not + min_words + '</strong>');
-           if (currentWordCount > 1) $('#evalOverallComments-words').html('<strong>' + min_wordcount_not + min_words + '</strong>. <strong class="text-danger">' + word_count_so_far + currentWordCount + '</strong>');
-        }  
+            else {
+               min_words_overall_ok = false;
+               $('#evalOverallComments-words').html('<strong> ' + min_wordcount_not + min_words + '</strong>');
+               if (currentWordCount > 1) $('#evalOverallComments-words').html('<strong>' + min_wordcount_not + min_words + '</strong>. <strong class="text-danger">' + word_count_so_far + currentWordCount + '</strong>');
+            }  
 
-        min_words_ok();
+            min_words_ok();
+
+        });
 
     });
+</script>
+<?php } // end if (($judging_scoresheet == 3) || ($judging_scoresheet == 4)) ?>
 
-});
-
-<?php } 
-
-if ((($judging_scoresheet == 1) || ($judging_scoresheet == 2)) && ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0))) { 
+<?php if ((($judging_scoresheet == 1) || ($judging_scoresheet == 2)) && ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0))) { 
 
     if (($cider) || ($mead)) {
       $comment_fields = array(
@@ -901,66 +1043,72 @@ if ((($judging_scoresheet == 1) || ($judging_scoresheet == 2)) && ((isset($_SESS
     }
 
 ?>
+<script type="text/javascript">
 
-if (edit) {
-  var min_words_aroma_ok = true;
-  var min_words_appearance_ok = true;
-  var min_words_flavor_ok = true;
-  var min_words_mouthfeel_ok = true;  
-  var min_words_overall_ok = true;
-} else {
-  var min_words_aroma_ok = false;
-  var min_words_appearance_ok = false;
-  var min_words_flavor_ok = false;
-  if ((style_type == 2) || (style_type == 3)) var min_words_mouthfeel_ok = true;
-  else var min_words_mouthfeel_ok = false;
-  var min_words_overall_ok = false;
-}
-
-
-function min_words_ok() {
-    $('#submitForm').attr('disabled','disabled');
-    if ((min_words_aroma_ok) && (min_words_appearance_ok) && (min_words_flavor_ok) && (min_words_mouthfeel_ok) && (min_words_overall_ok)) {
-        $('#submitForm').removeAttr('disabled');
-        $('#min-words-message').hide();
+    if (edit) {
+      var min_words_aroma_ok = true;
+      var min_words_appearance_ok = true;
+      var min_words_flavor_ok = true;
+      var min_words_mouthfeel_ok = true;  
+      var min_words_overall_ok = true;
     } else {
-      $('#min-words-message').show();
-      $('#min-words-message').html('<i class="fa fa-lg fa-exclamation-circle"></i> <strong><?php echo $evaluation_info_094; ?></strong>');
+      var min_words_aroma_ok = false;
+      var min_words_appearance_ok = false;
+      var min_words_flavor_ok = false;
+      if ((style_type == 2) || (style_type == 3)) var min_words_mouthfeel_ok = true;
+      else var min_words_mouthfeel_ok = false;
+      var min_words_overall_ok = false;
     }
 
-}
-
-$(document).ready(function() {
-
-    $('#min-words-message').hide();
-
-    <?php foreach ($comment_fields as $key => $value) { 
-        $value_words = $value."-words";
-        $key_ok = "min_words_".$key."_ok";
-    ?>
-
-    $('<?php echo $value; ?>').on('keyup keydown click onmouseout oninput', function() {
-
-        var currentWordCount_<?php echo $key; ?> = $('<?php echo $value; ?>').val().match(/\S+/g).length;
-
-        if (currentWordCount_<?php echo $key; ?> >= min_words) {
-            <?php echo $key_ok; ?> = true;
-            $('<?php echo $value_words; ?>').html(min_wordcount_reached + currentWordCount_<?php echo $key; ?>);      
-        } 
-
-        else {
-           <?php echo $key_ok; ?> = false;
-           $('<?php echo $value_words; ?>').html('<strong> ' + min_wordcount_not + min_words + '</strong>');
-           if (currentWordCount_<?php echo $key; ?> > 1) $('<?php echo $value_words; ?>').html('<strong>' + min_wordcount_not +  min_words + '</strong>. <strong class="text-danger">' + word_count_so_far + currentWordCount_<?php echo $key; ?> + '</strong>.');
+    function min_words_ok() {
+        $('#submitForm').attr('disabled','disabled');
+        if ((min_words_aroma_ok) && (min_words_appearance_ok) && (min_words_flavor_ok) && (min_words_mouthfeel_ok) && (min_words_overall_ok)) {
+            $('#submitForm').removeAttr('disabled');
+            $('#min-words-message').hide();
+        } else {
+          $('#min-words-message').show();
+          $('#min-words-message').html('<i class="fa fa-lg fa-exclamation-circle"></i> <strong><?php echo $evaluation_info_094; ?></strong>');
         }
 
-        min_words_ok();        
+    }
+
+    $(document).ready(function() {
+
+        $('#min-words-message').hide();
+
+        <?php foreach ($comment_fields as $key => $value) { 
+            $value_words = $value."-words";
+            $key_ok = "min_words_".$key."_ok";
+        ?>
+
+        $('<?php echo $value; ?>').on('keyup keydown click onmouseout oninput', function() {
+
+            var currentWordCount_<?php echo $key; ?> = $('<?php echo $value; ?>').val().match(/\S+/g).length;
+
+            if (currentWordCount_<?php echo $key; ?> >= min_words) {
+                <?php echo $key_ok; ?> = true;
+                $('<?php echo $value_words; ?>').html(min_wordcount_reached + currentWordCount_<?php echo $key; ?>);      
+            } 
+
+            else {
+               <?php echo $key_ok; ?> = false;
+               $('<?php echo $value_words; ?>').html('<strong> ' + min_wordcount_not + min_words + '</strong>');
+               if (currentWordCount_<?php echo $key; ?> > 1) $('<?php echo $value_words; ?>').html('<strong>' + min_wordcount_not +  min_words + '</strong>. <strong class="text-danger">' + word_count_so_far + currentWordCount_<?php echo $key; ?> + '</strong>.');
+            }
+
+            min_words_ok();        
+
+        });
+            
+        <?php } // end foreach ?>
 
     });
-        
-    <?php } ?>
 
-});
-<?php } ?>
 </script>
-<?php } // end if ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0)) ?>
+<?php } // end if ((($judging_scoresheet == 1) || ($judging_scoresheet == 2)) && ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0))) ?>
+
+
+
+
+<?php } // End if ((isset($_SESSION['jPrefsMinWords'])) && ($_SESSION['jPrefsMinWords'] > 0)) ?>
+

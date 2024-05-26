@@ -427,7 +427,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 		$totalRows_user = mysqli_num_rows($user);
 
 		$brewerEmail = filter_var($_POST['brewerEmail'],FILTER_SANITIZE_EMAIL);
-		$uid = filter_var($_POST['uid'],FILTER_SANITIZE_STRING);
+		$uid = sterilize($_POST['uid']);
 
 		if ($totalRows_user == 0) {
 
@@ -448,7 +448,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 				'brewerLastName' => blank_to_null($last_name),
 				'brewerAddress' => blank_to_null($address),
 				'brewerCity' => blank_to_null($city),
-				'brewerState' => blank_to_null($state),
+				'brewerState' => blank_to_null($state_province),
 				'brewerZip' => blank_to_null(sterilize($_POST['brewerZip'])),
 				'brewerCountry' => blank_to_null($_POST['brewerCountry']),
 				'brewerPhone1' => blank_to_null($brewerPhone1),
@@ -470,10 +470,12 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 				'brewerJudgeNotes' => blank_to_null($brewerJudgeNotes),
 				'brewerJudgeWaiver' => blank_to_null($brewerJudgeWaiver),
 				'brewerAHA' => blank_to_null($brewerAHA),
+				'brewerMHP' => blank_to_null($brewerMHP),
 				'brewerProAm' => blank_to_null($brewerProAm),
 				'brewerDropOff' => blank_to_null($brewerDropOff),
 				'brewerBreweryName' => blank_to_null($brewerBreweryName),
-				'brewerBreweryTTB' => blank_to_null($brewerBreweryTTB)
+				'brewerBreweryInfo' => blank_to_null($brewerBreweryInfo),
+				'brewerAssignment' => blank_to_null($brewerAssignment)
 			);
 
 			$result = $db_conn->insert ($update_table, $data);
@@ -527,7 +529,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 	if ($action == "edit") {
 
 		$brewerEmail = filter_var($_POST['brewerEmail'],FILTER_SANITIZE_EMAIL);
-		$uid = filter_var($_POST['uid'],FILTER_SANITIZE_STRING);
+		$uid = sterilize($_POST['uid']);
 
 		// Check for and clear assignments in staff DB table and judge assignments table if entrant
 		// indicates they do not want to judge, steward, or staff
@@ -647,7 +649,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			'brewerLastName' => blank_to_null($last_name),
 			'brewerAddress' => blank_to_null($address),
 			'brewerCity' => blank_to_null($city),
-			'brewerState' => blank_to_null($state),
+			'brewerState' => blank_to_null($state_province),
 			'brewerZip' => sterilize($_POST['brewerZip']),
 			'brewerCountry' => blank_to_null($_POST['brewerCountry']),
 			'brewerPhone1' => blank_to_null($brewerPhone1),
@@ -669,11 +671,14 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			'brewerJudgeNotes' => blank_to_null($brewerJudgeNotes),
 			'brewerJudgeWaiver' => blank_to_null($brewerJudgeWaiver),
 			'brewerAHA' => blank_to_null($brewerAHA),
+			'brewerMHP' => blank_to_null($brewerMHP),
 			'brewerProAm' => blank_to_null($brewerProAm),
 			'brewerDropOff' => blank_to_null($brewerDropOff),
 			'brewerBreweryName' => blank_to_null($brewerBreweryName),
-			'brewerBreweryTTB' => blank_to_null($brewerBreweryTTB)
+			'brewerBreweryInfo' => blank_to_null($brewerBreweryInfo),
+			'brewerAssignment' => blank_to_null($brewerAssignment)
 		);
+
 		$db_conn->where ('id', $id);
 		$result = $db_conn->update ($update_table, $data);
 		if (!$result) {
@@ -696,8 +701,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 		if ((isset($_POST['userQuestionAnswer'])) && ($_POST['changeSecurity'] == "Y")) {
 			
-			$userQuestionAnswer = $purifier->purify($_POST['userQuestionAnswer']);
-			$userQuestionAnswer = filter_var($userQuestionAnswer,FILTER_SANITIZE_STRING);
+			$userQuestionAnswer = $purifier->purify(sterilize($_POST['userQuestionAnswer']));
 
 			/**
 			 * Hash the user's security question response.
@@ -773,11 +777,11 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			$url = str_replace("www.","",$_SERVER['SERVER_NAME']);
 			
 			$from_email = (!isset($mail_default_from) || trim($mail_default_from) === '') ? "noreply@".$url : $mail_default_from;
-			if (strpos($url, 'brewcomp.com') !== false) $from_email = "noreply@brewcomp.com";
-			elseif (strpos($url, 'brewcompetition.com') !== false) $from_email = "noreply@brewcompetition.com";
+			if (strpos($url, 'brewingcompetitions.com') !== false) $from_email = $default_from."@brewingcompetitions.com";
 			$from_email = mb_convert_encoding($from_email, "UTF-8");
 
 			$contestName = $_SESSION['contestName'];
+			$from_name = html_entity_decode($from_name);
 			$from_name = mb_convert_encoding($contestName, "UTF-8");
 
 			$to_email = filter_var($_POST['brewerEmail'],FILTER_SANITIZE_EMAIL);
@@ -785,9 +789,11 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			$to_email_formatted = $to_name." <".$to_email.">";
 
 			$to_name = $first_name." ".$last_name;
+			$to_name = html_entity_decode($to_name);
 			$to_name = mb_convert_encoding($to_name, "UTF-8");
 			
 			$subject = sprintf($_SESSION['contestName'].": %s",$register_text_051);
+			$subject = html_entity_decode($subject);
 			$subject = mb_convert_encoding($subject, "UTF-8");
 
 			$message = "<html>" . "\r\n";

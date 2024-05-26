@@ -1,4 +1,13 @@
 <?php
+
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (strpos($section, "step") === FALSE) && ($_SESSION['userLevel'] > 0))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+
 $style_set_dropdown = "";
 $all_exceptions = "";
 $all_exceptions_js = "";
@@ -33,7 +42,14 @@ foreach ($style_sets as $style_set) {
 
     // Generate exception list for each of the style sets in the 
     // array and show/hide the list as each are selected via jQuery.
-    $query_styles_all = sprintf("SELECT id,brewStyleGroup,brewStyleNum,brewStyle,brewStyleVersion,brewStyleOwn FROM %s WHERE brewStyleVersion='%s' AND brewStyleOwn != 'custom'",$prefix."styles",$style_set['style_set_name']);
+    
+    /*
+    if (HOSTED) $styles_db_table = "bcoem_shared_styles";
+    else
+    */
+    $styles_db_table = $prefix."styles";
+
+    $query_styles_all = sprintf("SELECT id,brewStyleGroup,brewStyleNum,brewStyle,brewStyleVersion,brewStyleOwn FROM %s WHERE brewStyleVersion='%s' AND brewStyleOwn != 'custom'",$styles_db_table,$style_set['style_set_name']);
     if ($style_set['style_set_name'] == "BA") $query_styles_all .= " ORDER BY brewStyleVersion,brewStyleGroup,brewStyle ASC";
     else $query_styles_all .= " ORDER BY brewStyleVersion,brewStyleGroup,brewStyleNum,brewStyle ASC";
     $styles_all = mysqli_query($connection,$query_styles_all) or die (mysqli_error($connection));
@@ -42,14 +58,16 @@ foreach ($style_sets as $style_set) {
     if ($style_set['style_set_name'] == "BA") $method = 2;
     else $method = 0;
 
-    do {
-        
-        $all_exceptions_USCLEx .= "<div class=\"checkbox\"><label><input name=\"prefsUSCLEx[]\" type=\"checkbox\" class=\"chkbox\" value=\"".$row_styles_all['id']."\">";
-        if ($style_set['style_set_name'] != "BA") $all_exceptions_USCLEx .= style_number_const($row_styles_all['brewStyleGroup'],$row_styles_all['brewStyleNum'],$style_set['style_set_display_separator'],$method);
-        if ($style_set['style_set_name'] == "BA") $all_exceptions_USCLEx .= $style_set['style_set_categories'][$row_styles_all['brewStyleGroup']]." - ".$row_styles_all['brewStyle']."</label></div>\n";
-        else $all_exceptions_USCLEx .= " ".$row_styles_all['brewStyle']."</label></div>\n";
-        
-    } while($row_styles_all = mysqli_fetch_assoc($styles_all));
+    if ($row_styles_all) {
+        do {
+            
+            $all_exceptions_USCLEx .= "<div class=\"checkbox\"><label><input name=\"prefsUSCLEx[]\" type=\"checkbox\" class=\"chkbox\" value=\"".$row_styles_all['id']."\">";
+            if ($style_set['style_set_name'] != "BA") $all_exceptions_USCLEx .= style_number_const($row_styles_all['brewStyleGroup'],$row_styles_all['brewStyleNum'],$style_set['style_set_display_separator'],$method);
+            if ($style_set['style_set_name'] == "BA") $all_exceptions_USCLEx .= $style_set['style_set_categories'][$row_styles_all['brewStyleGroup']]." - ".$row_styles_all['brewStyle']."</label></div>\n";
+            else $all_exceptions_USCLEx .= " ".$row_styles_all['brewStyle']."</label></div>\n";
+            
+        } while($row_styles_all = mysqli_fetch_assoc($styles_all));
+    }
 
     $all_exceptions .= "<div class=\"form-group\" id=\"".$style_set['id']."-".$style_set['style_set_name']."\">\n";
     $all_exceptions .= "<label for=\"prefsUSCLEx\" class=\"col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label\">Exceptions to Entry Limit per ".$style_set['style_set_name']." Sub-Style</label>\n";
@@ -69,10 +87,14 @@ foreach ($style_sets as $style_set) {
         }
     }
 
-    // Generate jQuery for hide/show
-    // Unused as of now, but keeping just in case
-    // if ((isset($row_limits['prefsStyleSet'])) && ($row_limits['prefsStyleSet'] == $style_set['style_set_name'])) $js_edit_show_hide_style_set_div .= "$(\"#".$style_set['id']."-".$style_set['style_set_name']."\").show(\"fast\");";
-    // else $js_edit_show_hide_style_set_div .= "$(\"#".$style_set['id']."-".$style_set['style_set_name']."\").hide(\"fast\");";
+    /**
+     * Generate jQuery for hide/show
+     * Unused as of now, but keeping just in case
+     */
+    /*
+    if ((isset($row_limits['prefsStyleSet'])) && ($row_limits['prefsStyleSet'] == $style_set['style_set_name'])) $js_edit_show_hide_style_set_div .= "$(\"#".$style_set['id']."-".$style_set['style_set_name']."\").show(\"fast\");";
+    else $js_edit_show_hide_style_set_div .= "$(\"#".$style_set['id']."-".$style_set['style_set_name']."\").hide(\"fast\");";
+    */
 
     $all_exceptions_js .= "\t\telse if ($(\"#prefsStyleSet\").val() == \"".$style_set['style_set_name']."\") {\n";
     $all_exceptions_js .= "\t\t\t$(\"#subStyleExeptionsEdit\").hide(\"fast\");\n"; // Hide default upon entry
@@ -103,26 +125,37 @@ if (($section == "admin") && ($go == "preferences")) {
     if (isset($row_prefs['prefsGoogleAccount'])) $recaptcha_key = explode("|", $row_prefs['prefsGoogleAccount']);
     if ($_SESSION['prefsStyleSet'] == "BA") include (INCLUDES.'ba_constants.inc.php');
 
-    // Generate the default sub-style exception list (current settings)
-    do {
+    $styles_selected = array();
+    $styles_selected = json_decode($_SESSION['prefsSelectedStyles'],true);
 
-        $checked = "";
+    if ($row_styles) {
 
-        if ($go == "preferences") {
-            $a = explode(",", $row_limits['prefsUSCLEx']);
-            $b = $row_styles['id'];
-            foreach ($a as $value) {
-                if ($value == $b) $checked = "CHECKED";
+        // Generate the default sub-style exception list (current settings)
+        do {
+
+            if (array_key_exists($row_styles['id'], $styles_selected)) {
+
+                $checked = "";
+
+                if ($go == "preferences") {
+                    $a = explode(",", $row_limits['prefsUSCLEx']);
+                    $b = $row_styles['id'];
+                    foreach ($a as $value) {
+                        if ($value == $b) $checked = "CHECKED";
+                    }
+                }
+
+                if ($row_styles['id'] != "") {
+                    $style_number = style_number_const($row_styles['brewStyleGroup'],$row_styles['brewStyleNum'],$_SESSION['style_set_display_separator'],0);
+                    $prefsUSCLEx .= "<div class=\"checkbox\"><label><input name=\"prefsUSCLEx[]\" type=\"checkbox\" value=\"".$row_styles['id']."\" ".$checked.">".$style_number." ".$row_styles['brewStyle']."</label></div>\n";
+                }
+
             }
-        }
 
-        if ($row_styles['id'] != "") {
-            $style_number = style_number_const($row_styles['brewStyleGroup'],$row_styles['brewStyleNum'],$_SESSION['style_set_display_separator'],0);
-            $prefsUSCLEx .= "<div class=\"checkbox\"><label><input name=\"prefsUSCLEx[]\" type=\"checkbox\" value=\"".$row_styles['id']."\" ".$checked.">".$style_number." ".$row_styles['brewStyle']."</label></div>\n";
-        }
+        } while ($row_styles = mysqli_fetch_assoc($styles));
 
-    } while ($row_styles = mysqli_fetch_assoc($styles));
-
+    }
+    
 }
 
 if ($section == "admin") { ?>
@@ -135,7 +168,7 @@ if ($section == "admin") { ?>
 <?php } ?>
 <script type='text/javascript'>
 
-var entries_present = <?php if (isset($totalRows_log)) echo $totalRows_log; ?>;
+var entries_present = "<?php if (isset($totalRows_log)) echo $totalRows_log; ?>";
 var current_style_set = "<?php if (isset($_SESSION['prefsStyleSet'])) echo $_SESSION['prefsStyleSet']; ?>";
 
 $(document).ready(function(){
@@ -152,7 +185,7 @@ $(document).ready(function(){
     ?>
 
     <?php if (($row_prefs['prefsCAPTCHA'] == "1") || ($section == "step3")) { ?>
-     $("#reCAPTCHA-keys").show("fast");
+     $("#reCAPTCHA-keys").show();
     <?php } ?>
 
     $("input[name$='prefsCAPTCHA']").click(function() {
@@ -161,6 +194,22 @@ $(document).ready(function(){
         }
         else {
             $("#reCAPTCHA-keys").hide("fast");
+        }
+    });
+
+    <?php if ($row_prefs['prefsScoringCOA'] == "1") { ?>
+     $("#non-COA-scoring").hide();
+     $("#bos-in-calcs").hide();
+    <?php } ?>
+
+    $("input[name$='prefsScoringCOA']").click(function() {
+        if ($(this).val() == "0") {
+            $("#non-COA-scoring").show("fast");
+            $("#bos-in-calcs").show("fast");
+        }
+        else {
+            $("#non-COA-scoring").hide("fast");
+            $("#bos-in-calcs").hide("fast");
         }
     });
 
@@ -314,6 +363,7 @@ $(document).ready(function(){
 </div>
 <?php } ?>
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php if ($section == "step3") echo "setup"; else echo $section; ?>&amp;action=<?php if ($section == "step3") echo "add"; else echo "edit"; ?>&amp;dbTable=<?php echo $preferences_db_table; ?>&amp;id=1" name="form1">
+<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
 <input type="hidden" name="prefsRecordLimit" value="9999" />
 <h3>General</h3>
 <div class="form-group"><!-- Form Group Radio INLINE -->
@@ -350,7 +400,7 @@ $(document).ready(function(){
     <label for="prefsWinnerDelay" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Winner Display Date/Time</label>
     <div class="col-lg-6 col-md-4 col-sm-8 col-xs-12">
         <!-- Input Here -->
-            <input class="form-control" id="prefsWinnerDelay" name="prefsWinnerDelay" type="text" value="<?php if ($section == "step3") { $date = new DateTime(); $date->modify('+2 months'); echo $date->format('Y-m-d H'); } elseif (!empty($row_prefs['prefsWinnerDelay'])) echo getTimeZoneDateTime($row_prefs['prefsTimeZone'], $row_prefs['prefsWinnerDelay'], $row_prefs['prefsDateFormat'],  $row_prefs['prefsTimeFormat'], "system", "date-time-system"); ?>" placeholder="<?php if (strpos($section, "step") === FALSE) echo $current_date." ".$current_time; ?>" required>
+            <input class="form-control date-time-picker-system" id="prefsWinnerDelay" name="prefsWinnerDelay" type="text" value="<?php if ($section == "step3") { $date = new DateTime(); $date->modify('+2 months'); echo $date->format('Y-m-d H'); } elseif (!empty($row_prefs['prefsWinnerDelay'])) echo getTimeZoneDateTime($row_prefs['prefsTimeZone'], $row_prefs['prefsWinnerDelay'], $row_prefs['prefsDateFormat'],  $row_prefs['prefsTimeFormat'], "system", "date-time-system"); ?>" placeholder="<?php if (strpos($section, "step") === FALSE) echo $current_date." ".$current_time; ?>" required>
         <span id="helpBlock" class="help-block">Date and time when the system will display winners if Winner Display is enabled.</span>
         <div class="help-block with-errors"></div>
     </div>
@@ -398,11 +448,11 @@ $(document).ready(function(){
         <div class="modal-content">
             <div class="modal-header bcoem-admin-modal">
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
-                <h4 class="modal-title" id="prefsEvalModalLabel">Contact Form Info</h4>
+                <h4 class="modal-title" id="prefsEvalModalLabel">Electronic Scoresheets Info</h4>
             </div>
             <div class="modal-body">
                 <p>Enable or disable the Electronic Scoresheets function. If enabled, Admins have the option to accept judges' entry evaluations via fully electronic, web-based scoresheets built to emulate BJCP official and quasi-official paper-based forms.</p>
-                <p>If enabling Electronic Scoresheets and associated functions, Admins should also make sure to set up their installation to take full advantage of them by following the steps outlined in the <a href="https://brewcompetition.com/setup-electronic-scoresheets" target="_blank">Setup BCOE&amp;M Electronic Scoresheets</a> help article. Admins or competition officials should also direct all judges who will be using Electronic Scoresheets to review the <a href="https://brewcompetition.com/judging-with-electronic-scoresheets" target="_blank">Judging with BCOE&amp;M Electronic Scoresheets</a> primer.</p>
+                <p>If enabling Electronic Scoresheets and associated functions, Admins should also make sure to set up their installation to take full advantage of them by following the steps outlined in the <a href="https://brewingcompetitions.com/setup-electronic-scoresheets" target="_blank">Setup BCOE&amp;M Electronic Scoresheets</a> help article. Admins or competition officials should also direct all judges who will be using Electronic Scoresheets to review the <a href="https://brewingcompetitions.com/judging-with-electronic-scoresheets" target="_blank">Judging with BCOE&amp;M Electronic Scoresheets</a> primer.</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
@@ -513,6 +563,9 @@ $(document).ready(function(){
         </div>
     </div>
 </div><!-- ./modal -->
+<?php if (HOSTED) { ?>
+<input type="hidden" name="prefsEmailCC" value="0">
+<?php } else { ?>
 <div class="form-group"><!-- Form Group Radio INLINE -->
     <label for="prefsEmailCC" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Contact Form CC</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
@@ -524,13 +577,13 @@ $(document).ready(function(){
             <label class="radio-inline">
                 <input type="radio" name="prefsEmailCC" value="1" id="prefsEmailCC_1"  <?php if ($row_prefs['prefsEmailCC'] == "1") echo "CHECKED"; elseif ($section == "step3") echo "CHECKED"; ?> /> Disable
             </label>
-            
         </div>
         <span id="helpBlock" class="help-block">
         <p>Enable or disable automatic carbon copying (CC) of emails sent by the system to the "sender" of the email. Since any email address can be entered in the From field of the Contact form, disabling CC will prevent malicious actors from using the competition contact form to spam emails unrelated to the competition.</p>
         </span>
     </div>
 </div><!-- ./Form Group -->
+<?php } ?>
 <div class="form-group"><!-- Form Group Radio INLINE -->
     <label for="EmailRegConfirm" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Confirmation Emails</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
@@ -590,11 +643,15 @@ $(document).ready(function(){
     <div class="col-lg-6 col-md-5 col-sm-8 col-xs-12">
     <!-- Input Here -->
     <select class="selectpicker" name="prefsTheme" id="prefsTheme" data-width="auto">
-        <?php foreach ($theme_name as $theme) {
-            $themes = explode("|",$theme);
+        <?php 
+        $themes = "";
+        foreach ($theme_name as $key => $value) {
+            $themes .= "<option value=\"".$key."\" ";
+            if ($row_prefs['prefsTheme'] == $key) $themes .= " SELECTED";
+            $themes .= ">".$value."</option>";
+        }
+        echo $themes;
         ?>
-        <option value="<?php echo $themes['0']; ?>" <?php if ($row_prefs['prefsTheme'] ==  $themes['0']) echo " SELECTED"; ?> /><?php echo  $themes['1']; ?></option>
-        <?php } ?>
     </select>
     </div>
 </div><!-- ./Form Group -->
@@ -765,7 +822,7 @@ $(document).ready(function(){
         </div>
     </div><!-- ./Form Group -->
 </div>
-<div class="form-group"><!-- Form Group Radio  -->
+<div id="bos-in-calcs" class="form-group"><!-- Form Group Radio  -->
     <label for="prefsBestUseBOS" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Include BOS in Calculations?</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <div class="input-group">
@@ -780,66 +837,112 @@ $(document).ready(function(){
         <span id="helpBlock" class="help-block">Indicate whether you wish to include any Best of Show (BOS) places in Best Brewer and Best Club calculations.</span>
     </div>
 </div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsFirstPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for First Place</label>
+<div class="form-group"><!-- Form Group Radio  -->
+    <label for="prefsBestUseBOS" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Use Circuit of America Calculations?</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-    <!-- Input Here -->
-    <select class="selectpicker" name="prefsFirstPlacePts" id="prefsFirstPlacePts" data-size="10" data-width="auto">
-        <?php for ($i=0; $i <= 25; $i++) { ?>
-        <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsFirstPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
-        <?php } ?>
-    </select>
-    <span id="helpBlock" class="help-block">Enter the number of points awarded for each first place that an entrant receives.</span>
+        <div class="input-group">
+            <!-- Input Here -->
+            <label class="radio-inline">
+                <input type="radio" name="prefsScoringCOA" value="1" id="prefsScoringCOA_1" <?php if ($row_prefs['prefsScoringCOA'] == 1) echo "CHECKED"; ?>> Yes
+            </label>
+            <label class="radio-inline">
+                <input type="radio" name="prefsScoringCOA" value="0" id="prefsScoringCOA_0" <?php if (($section == "step3") || ($row_prefs['prefsScoringCOA'] == 0)) echo "CHECKED"; ?>> No
+            </label>
+        </div>
+        <span id="helpBlock" class="help-block">Indicate whether you wish use the Master Homebrewer Program's <a href="https://www.masterhomebrewerprogram.com/circuit-of-america" target="_blank">Circuit of America</a> scoring methodolgy for all Best Brewer and Best Club calculations. <strong>Indicating "Yes" here will override all other calculation preferences.</strong>
+        </span>
+        <div class="btn-group" role="group" aria-label="prefsEvalModal">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-xs btn-info" data-toggle="modal" data-target="#prefsScoringCOAModal">
+                   Circuit of America Calculations Info
+                </button>
+            </div>
+        </div>        
     </div>
 </div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsSecondPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Second Place</label>
-    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-    <!-- Input Here -->
-    <select class="selectpicker" name="prefsSecondPlacePts" id="prefsSecondPlacePts" data-size="10" data-width="auto">
-        <?php for ($i=0; $i <= 25; $i++) { ?>
-        <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsSecondPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
-        <?php } ?>
-    </select>
-    <span id="helpBlock" class="help-block">Enter the number of points awarded for each second place that an entrant receives.</span>
+
+<!-- Modal -->
+<div class="modal fade" id="prefsScoringCOAModal" tabindex="-1" role="dialog" aria-labelledby="prefsScoringCOAModalLabel">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bcoem-admin-modal">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                <h4 class="modal-title" id="prefsScoringCOAModalLabel">Circuit of America Scoring Info</h4>
+            </div>
+            <div class="modal-body">
+                <p>Use the Master Homebrewer Program's Circuit of America scoring methodology to determine Best Brewer and Best Club results. The calculations look like this, depending upon your Winner Place Distribution Method:</p>
+                <p><img class="img-responsive" src="https://brewingcompetitions.com/00_images/CoA_Scoring_BCOEM.png" ></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
-</div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsThirdPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Third Place</label>
-    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-    <!-- Input Here -->
-    <select class="selectpicker" name="prefsThirdPlacePts" id="prefsThirdPlacePts" data-size="10" data-width="auto">
-        <?php for ($i=0; $i <= 25; $i++) { ?>
-        <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsThirdPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
-        <?php } ?>
-    </select>
-    <span id="helpBlock" class="help-block">Enter the number of points awarded for each third place that an entrant receives.</span>
-    </div>
-</div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsFourthPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Fourth Place</label>
-    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-    <!-- Input Here -->
-    <select class="selectpicker" name="prefsFourthPlacePts" id="prefsFourthPlacePts" data-size="10" data-width="auto">
-        <?php for ($i=0; $i <= 25; $i++) { ?>
-        <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsFourthPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
-        <?php } ?>
-    </select>
-    <span id="helpBlock" class="help-block">Enter the number of points awarded for each fourth place that an entrant receives.</span>
-    </div>
-</div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsHMPts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Honorable Mention</label>
-    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-    <!-- Input Here -->
-    <select class="selectpicker" name="prefsHMPts" id="prefsHMPts" data-size="10" data-width="auto">
-        <?php for ($i=0; $i <= 25; $i++) { ?>
-        <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsHMPts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
-        <?php } ?>
-    </select>
-    <span id="helpBlock" class="help-block">Enter the number of points awarded for each Honorable Mention that an entrant receives.</span>
-    </div>
-</div><!-- ./Form Group -->
+</div><!-- ./modal -->
+
+<section id="non-COA-scoring">
+    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+        <label for="prefsFirstPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for First Place</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <!-- Input Here -->
+        <select class="selectpicker" name="prefsFirstPlacePts" id="prefsFirstPlacePts" data-size="10" data-width="auto">
+            <?php for ($i=0; $i <= 25; $i++) { ?>
+            <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsFirstPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
+            <?php } ?>
+        </select>
+        <span id="helpBlock" class="help-block">Enter the number of points awarded for each first place that an entrant receives.</span>
+        </div>
+    </div><!-- ./Form Group -->
+    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+        <label for="prefsSecondPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Second Place</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <!-- Input Here -->
+        <select class="selectpicker" name="prefsSecondPlacePts" id="prefsSecondPlacePts" data-size="10" data-width="auto">
+            <?php for ($i=0; $i <= 25; $i++) { ?>
+            <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsSecondPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
+            <?php } ?>
+        </select>
+        <span id="helpBlock" class="help-block">Enter the number of points awarded for each second place that an entrant receives.</span>
+        </div>
+    </div><!-- ./Form Group -->
+    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+        <label for="prefsThirdPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Third Place</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <!-- Input Here -->
+        <select class="selectpicker" name="prefsThirdPlacePts" id="prefsThirdPlacePts" data-size="10" data-width="auto">
+            <?php for ($i=0; $i <= 25; $i++) { ?>
+            <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsThirdPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
+            <?php } ?>
+        </select>
+        <span id="helpBlock" class="help-block">Enter the number of points awarded for each third place that an entrant receives.</span>
+        </div>
+    </div><!-- ./Form Group -->
+    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+        <label for="prefsFourthPlacePts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Fourth Place</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <!-- Input Here -->
+        <select class="selectpicker" name="prefsFourthPlacePts" id="prefsFourthPlacePts" data-size="10" data-width="auto">
+            <?php for ($i=0; $i <= 25; $i++) { ?>
+            <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsFourthPlacePts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
+            <?php } ?>
+        </select>
+        <span id="helpBlock" class="help-block">Enter the number of points awarded for each fourth place that an entrant receives.</span>
+        </div>
+    </div><!-- ./Form Group -->
+    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+        <label for="prefsHMPts" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Points for Honorable Mention</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <!-- Input Here -->
+        <select class="selectpicker" name="prefsHMPts" id="prefsHMPts" data-size="10" data-width="auto">
+            <?php for ($i=0; $i <= 25; $i++) { ?>
+            <option value="<?php echo $i; ?>" <?php if ($row_prefs['prefsHMPts'] == $i) echo "SELECTED"; elseif (($i == 0) && ($section == "step3")) echo "SELECTED"; ?>><?php echo $i; ?></option>
+            <?php } ?>
+        </select>
+        <span id="helpBlock" class="help-block">Enter the number of points awarded for each Honorable Mention that an entrant receives.</span>
+        </div>
+    </div><!-- ./Form Group -->
+</section>
+
 <?php for ($i=1; $i<=6; $i++) { ?>
 <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
     <label for="<?php echo 'prefsTieBreakRule'.$i;?>" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Tie Break Rule #<?php echo $i; ?></label>
@@ -855,9 +958,10 @@ $(document).ready(function(){
     </div>
 </div><!-- ./Form Group -->
 <?php } ?>
+
 <h3>Entries</h3>
 <div class="form-group"><!-- Form Group Radio INLINE -->
-    <label for="prefsStyleSet" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Styleset</label>
+    <label for="prefsStyleSet" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Style Set</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <!-- Input Here -->
         <select class="selectpicker" name="prefsStyleSet" id="prefsStyleSet" data-size="12" data-width="auto">
@@ -911,7 +1015,7 @@ $(document).ready(function(){
                 <p>The Barcode options are intended to be used with a USB barcode scanner and the <a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=checkin">barcode entry check-in function</a>.</p>
                 <p>The QR code options are intended to be used with a mobile device and <a class="hide-loader" href="<?php echo $base_url; ?>qr.php" target="_blank">QR code entry check-in function</a> (requires a QR code reading app).</p>
                 <div class="well">
-                <p>Both the QR code and barcode options are intended to be used with the Judging Number Barcode Labels and the Judging Number Round Labels <a class="hide-loader" href="http://www.brewcompetition.com/barcode-labels" target="_blank"><strong>available for download at brewcompetition.com</strong></a>. BCOE&amp;M utilizes the&nbsp;<strong><a class="hide-loader" href="http://en.wikipedia.org/wiki/Code_39" target="_blank">Code 39 specification</a></strong> to generate all barcodes. Please make sure your scanner recognizes this type of barcode <em>before</em> implementing in your competition.</p>
+                <p>Both the QR code and barcode options are intended to be used with the Judging Number Barcode Labels and the Judging Number Round Labels <a class="hide-loader" href="http://www.brewingcompetitions.com/barcode-labels" target="_blank"><strong>available for download at brewingcompetitions.com</strong></a>. BCOE&amp;M utilizes the&nbsp;<strong><a class="hide-loader" href="http://en.wikipedia.org/wiki/Code_39" target="_blank">Code 39 specification</a></strong> to generate all barcodes. Please make sure your scanner recognizes this type of barcode <em>before</em> implementing in your competition.</p>
                 </div>
                 <p class="text-primary"><strong>As of version 2.5.0, due to the deprecation of all recipe-related fields for individual entries, options with entry recipe forms have been removed.</strong></p>
             </div>
@@ -922,11 +1026,11 @@ $(document).ready(function(){
     </div>
 </div><!-- ./modal -->
 
-<div class="form-group"><!-- Form Group Radio INLINE -->
+<!--
+<div class="form-group">
     <label for="prefsHideRecipe" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Hide Entry Recipe Section</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <div class="input-group">
-            <!-- Input Here -->
             <label class="radio-inline">
                 <input type="radio" name="prefsHideRecipe" value="Y" id="prefsHideRecipe_0" checked> Yes
             </label>
@@ -941,8 +1045,7 @@ $(document).ready(function(){
             </div>
         </span>
     </div>
-</div><!-- ./Form Group -->
-<!-- Modal -->
+</div>
 <div class="modal fade" id="hideRecipeModal" tabindex="-1" role="dialog" aria-labelledby="hideRecipeModalLabel">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -958,7 +1061,8 @@ $(document).ready(function(){
             </div>
         </div>
     </div>
-</div><!-- ./modal -->
+</div>
+-->
 <div id="prefsHideSpecific" class="form-group"><!-- Form Group Radio INLINE -->
     <label for="prefsHideSpecific" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Hide Brewer&rsquo;s Specifics Field</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
@@ -1040,7 +1144,7 @@ $(document).ready(function(){
     </div>
 </div><!-- ./modal -->
 <div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
-    <label for="prefsEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit (Paid/Unpaid)</label>
+    <label for="prefsEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit &ndash; Paid/Unpaid</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <!-- Input Here -->
             <input class="form-control" id="prefsEntryLimit" name="prefsEntryLimit" type="text" value="<?php if (isset($row_limits['prefsEntryLimit'])) echo $row_limits['prefsEntryLimit']; ?>" placeholder="">
@@ -1049,7 +1153,7 @@ $(document).ready(function(){
 </div><!-- ./Form Group -->
 
 <div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
-    <label for="prefsEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit (Paid)</label>
+    <label for="prefsEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit &ndash; Paid</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <!-- Input Here -->
             <input class="form-control" id="prefsEntryLimitPaid" name="prefsEntryLimitPaid" type="text" value="<?php if (isset($row_limits['prefsEntryLimitPaid'])) echo $row_limits['prefsEntryLimitPaid']; ?>" placeholder="">
@@ -1065,7 +1169,6 @@ $(document).ready(function(){
         </span>
     </div>
 </div><!-- ./Form Group -->
-
 <!-- Modal -->
 <div class="modal fade" id="entryLimitPaidModal" tabindex="-1" role="dialog" aria-labelledby="entryLimitPaidModalLabel">
     <div class="modal-dialog" role="document">
@@ -1093,6 +1196,30 @@ $(document).ready(function(){
     </div>
 </div><!-- ./modal -->
 
+<?php
+
+if (strpos($section, "step") === FALSE) {
+    $st_count = 0;
+    $st_arr = array();
+    do {
+        $st_arr[] = $row_style_type['id'];
+        $st_count++;
+?>
+<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+    <label for="styleTypeEntryLimit-<?php echo $row_style_type['id']; ?>" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Entry Limit &ndash; <?php echo $row_style_type['styleTypeName']; ?></label>
+    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <input class="form-control" id="styleTypeEntryLimit-<?php echo $row_style_type['id']; ?>" name="styleTypeEntryLimit-<?php echo $row_style_type['id']; ?>" type="number" min="0" value="<?php echo $row_style_type['styleTypeEntryLimit']; ?>" placeholder="">
+        <span id="helpBlock" class="help-block"><?php if ($st_count == $totalRows_style_type) echo "Individual style type entry limits above are only for those that have BOS enabled. <a href='".$base_url."index.php?section=admin&amp;go=style_types'>Manage your competition style types</a> to specify entry limits for others."; ?></span>
+    </div>
+</div><!-- ./Form Group -->
+<?php 
+    } while ($row_style_type = mysqli_fetch_assoc($style_type)); 
+}
+
+?>
+
+<input name="style_type_entry_limits" type="hidden" value="<?php echo implode(",", $st_arr); ?>">
+
 <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
     <label for="prefsUserEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Entry Limit per Participant</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
@@ -1108,7 +1235,7 @@ $(document).ready(function(){
 </div><!-- ./Form Group -->
 <?php if ($go == "preferences") { ?>
 <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-    <label for="prefsUserSubCatLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Entry Limit per Sub-Style</label>
+    <label for="prefsUserSubCatLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Per Participant Sub-Style Entry Limit</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
     <!-- Input Here -->
     <select class="selectpicker" name="prefsUserSubCatLimit" id="prefsUserSubCatLimit" data-size="10">
@@ -1123,7 +1250,7 @@ $(document).ready(function(){
 <!-- Insert Collapsable -->
 <div id="subStyleExeptions">
     <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
-        <label for="prefsUSCLExLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Entry Limit For <em>Excepted</em> Sub-Styles</label>
+        <label for="prefsUSCLExLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Per Participant Entry Limit For <em>Excepted</em> Sub-Styles</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
         <!-- Input Here -->
         <select class="selectpicker" name="prefsUSCLExLimit" id="prefsUSCLExLimit" data-size="10" data-width="auto">
@@ -1136,7 +1263,7 @@ $(document).ready(function(){
             <div class="btn-group" role="group" aria-label="exceptdSubstylesModal">
             <div class="btn-group" role="group">
                 <button type="button" class="btn btn-xs btn-info" data-toggle="modal" data-target="#exceptdSubstylesModal">
-                   Entry Limit For Excepted Sub-Styles Info
+                   Per Participant Entry Limit For <em>Excepted</em> Sub-Styles Info
                 </button>
             </div>
             </div>
@@ -1144,11 +1271,11 @@ $(document).ready(function(){
         </div>
     </div><!-- ./Form Group -->
     <div class="form-group" id="subStyleExeptionsEdit">
-        <label for="prefsUSCLEx" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Exceptions to Entry Limit per Sub-Style</label>
+        <label for="prefsUSCLEx" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Exceptions to Per Participant Sub-Style Entry Limit</label>
         <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12">
             <?php if (strpos($section, "step") === FALSE) { ?>
                 <div class="btn-group" role="group">
-                    <button class="btn btn-xs btn-default" data-toggle="collapse" href="#sub-style-list" aria-expanded="false" aria-controls="sub-style-list">Expand/Collapse List</button>
+                    <button class="btn btn btn-default" data-toggle="collapse" href="#sub-style-list" aria-expanded="false" aria-controls="sub-style-list">Expand/Collapse the Sub-Style List</button>
                 </div>
                 <?php } ?>
             <div class="<?php if (strpos($section, "step") === FALSE) echo "collapse"; ?>" id="sub-style-list">
@@ -1585,7 +1712,7 @@ $(document).ready(function(){
     </div><!-- ./modal -->
 
     <div class="form-group"><!-- Form Group Radio INLINE -->
-        <label for="prefsPaypal" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label"><a class="hide-loader" href="https://developer.paypal.com/docs/classic/products/instant-payment-notification/" target="_blank">PayPal Instant Payment Notification</a> (IPN)</label>
+        <label for="prefsPaypal" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label"><a class="hide-loader" href="https://developer.paypal.com/api/nvp-soap/ipn/" target="_blank">PayPal Instant Payment Notification</a> (IPN)</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
             <div class="input-group">
                 <!-- Input Here -->
@@ -1606,6 +1733,7 @@ $(document).ready(function(){
             </div>
             <div id="helpBlock-payPalIPN1" class="help-block">
                 <p>Your PayPal IPN Notification URL is: <strong><?php echo $base_url; ?>ppv.php</strong><br>Your PayPal IPN Auto Return URL is: <strong><?php echo $base_url; ?>index.php?section=pay&amp;msg=10</strong></p>
+                <p>The IPN Notification URL must be added in your <a href="https://www.paypal.com/merchantnotification/ipn/preference" target="_blank">PayPal IPN Settings</a> with the value: <strong><?php echo $base_url; ?>ppv.php</strong><br>The IPN Auto Return URL must be added in your <a href="https://www.paypal.com/businessmanage/preferences/website" target="_blank">PayPal Website payment preferences</a> with the value: <strong><?php echo $base_url; ?>index.php?section=pay&amp;msg=10</strong></p>
                 <p>Be sure to select the <em>PayPal IPN Info and Setup</em> button above for requirements and further info.</p>
             </div>
         </div>
@@ -1624,10 +1752,10 @@ $(document).ready(function(){
                     <p>No more fielding questions from entrants about whether their entries have been marked as paid, or why their entries haven't been.</p>
                     <p>Transaction details will be saved to your BCOE&amp;M database and will be available via your PayPal dashboard as well.</p>
                     <p class="text-primary"><strong>First, it is suggested that you have a dedicated PayPal account for your competition.</strong></p>
-                    <p class="text-danger"><strong>Second, to implement PayPal IPN, your PayPal account must be a <u>business</u> account.</strong></p>
-                    <p><strong>Third, set up your PayPal account to process Instant Payment Notifications. Complete instructions are <a class="hide-loader" href="http://brewcompetition.com/paypal-ipn" target="_blank">available here</a>.</strong></p>
-                    <p>Your notification URL is: <blockquote><strong><?php echo $base_url; ?>ppv.php</strong></blockquote></p>
-                    <p>Your Auto Return URL is: <blockquote><strong><?php echo $base_url; ?>index.php?section=pay&amp;msg=10</strong></blockquote></p>
+                    <p class="text-primary"><strong>Second, to implement PayPal IPN, your PayPal account must be a <u>business</u> account.</strong></p>
+                    <p class="text-primary"><strong>Third, set up your PayPal account to process Instant Payment Notifications.</strong> Complete instructions are <a class="hide-loader" href="http://brewingcompetitions.com/paypal-ipn" target="_blank">available here</a>.</p>
+                    <p>Your IPN Notification URL must be added in your <a href="https://www.paypal.com/merchantnotification/ipn/preference" target="_blank">PayPal IPN Settings</a> with the value: <blockquote><strong><?php echo $base_url; ?>ppv.php</strong></blockquote></p>
+                    <p>Your IPN Auto Return URL must be added in your <a href="https://www.paypal.com/businessmanage/preferences/website" target="_blank">PayPal Website payment preferences</a> with the value: <blockquote><strong><?php echo $base_url; ?>index.php?section=pay&amp;msg=10</strong></blockquote></p>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-danger" data-dismiss="modal">Close</button>

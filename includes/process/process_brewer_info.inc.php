@@ -17,6 +17,7 @@ $brewerJudgeMead = "";
 $brewerJudgeCider = "";
 $brewerJudgeRank = "";
 $brewerAHA = "";
+$brewerMHP = "";
 $brewerProAm = "";
 $brewerClubs = "";
 $brewerPhone1 = "";
@@ -24,7 +25,10 @@ $brewerPhone2 = "";
 $brewerJudgeWaiver = "Y";
 $brewerDropOff = 0;
 $brewerBreweryName = "";
+$brewerBreweryInfo = array();
 $brewerBreweryTTB = "";
+$brewerBreweryProd = "";
+$brewerBreweryProdMeas = "";
 $brewerJudge = "N";
 $brewerSteward = "N";
 $brewerStaff = "";
@@ -34,6 +38,7 @@ $dislikes = "";
 $rank = "";
 $location_pref1 = "";
 $location_pref2 = "";
+$brewerAssignment = "";
 
 if ($go == "admin") $user_id = $filter;
 elseif ($id != "default") $user_id = $id;
@@ -49,6 +54,7 @@ if (isset($_POST['brewerJudgeMead'])) $brewerJudgeMead = $_POST['brewerJudgeMead
 if (isset($_POST['brewerJudgeCider'])) $brewerJudgeCider = $_POST['brewerJudgeCider'];
 if (isset($_POST['brewerJudgeRank'])) $brewerJudgeRank = $_POST['brewerJudgeRank'];
 if (isset($_POST['brewerAHA'])) $brewerAHA = sterilize($_POST['brewerAHA']);
+if (isset($_POST['brewerMHP'])) $brewerMHP = sterilize($_POST['brewerMHP']);
 if (isset($_POST['brewerProAm'])) $brewerProAm = $_POST['brewerProAm'];
 if (isset($_POST['brewerClubs'])) {
     include (DB.'entries.db.php');
@@ -70,14 +76,18 @@ if (isset($_POST['brewerPhone2'])) $brewerPhone2 = sterilize($_POST['brewerPhone
 if (isset($_POST['brewerDropOff'])) $brewerDropOff = sterilize($_POST['brewerDropOff']);
 
 if (isset($_POST['brewerBreweryName'])) {
-    $brewerBreweryName = standardize_name($purifier->purify($_POST['brewerBreweryName']));
+    $brewerBreweryName = $purifier->purify($_POST['brewerBreweryName']);
     $brewerBreweryName = sterilize($brewerBreweryName);
 }
 
 if (isset($_POST['brewerBreweryTTB'])) {
     $brewerBreweryTTB = $purifier->purify($_POST['brewerBreweryTTB']);
     $brewerBreweryTTB = strtoupper($brewerBreweryTTB);
-    $brewerBreweryTTB = sterilize($brewerBreweryTTB);
+    $brewerBreweryInfo['TTB'] = sterilize($brewerBreweryTTB);
+}
+
+if (isset($_POST['brewerBreweryProd'])) {
+    $brewerBreweryInfo['Production'] = sterilize($_POST['brewerBreweryProd'])." ".sterilize($_POST['brewerBreweryProdMeas']);
 }
 
 if (isset($_POST['brewerJudge'])) $brewerJudge = $_POST['brewerJudge'];
@@ -93,6 +103,50 @@ if (isset($_POST['brewerJudgeNotes'])) {
     $brewerJudgeNotes = $purifier->purify($_POST['brewerJudgeNotes']);
     $brewerJudgeNotes = sterilize($brewerJudgeNotes);
 }
+
+if ((isset($_POST['brewerAssignment'])) && (!empty($_POST['brewerAssignment']))) {
+    $affilliated = array("affilliated" => $_POST['brewerAssignment']);
+}
+
+else $affilliated = array();
+
+if ((isset($_POST['brewerAssignmentOther'])) && (!empty($_POST['brewerAssignmentOther']))) {
+
+    $all_orgs = explode(",",$_POST['allOrgs']);   
+    $affilliated_other_arr = str_replace(", ",",",$_POST['brewerAssignmentOther']);
+    $affilliated_other_arr = str_replace(",",",",$_POST['brewerAssignmentOther']);
+    $affilliated_other_arr = str_replace("; ",",",$_POST['brewerAssignmentOther']);
+    $affilliated_other_arr = str_replace(";",",",$_POST['brewerAssignmentOther']);
+    $affilliated_other_arr = explode(",",$affilliated_other_arr);
+    $affilliated_other = array();
+
+    foreach ($affilliated_other_arr as $value) {  
+        $value = $purifier->purify($value);
+        $value = sterilize($value);
+        $value = strtolower($value);
+        if (!in_array($value,$all_orgs)) $affilliated_other[] = ucwords($value);
+    }
+
+    if (!empty($affilliated_other)) $affilliated_other_arr = array("affilliatedOther" => $affilliated_other);
+
+}
+
+else $affilliated_other_arr = array();
+
+if ((empty($affilliated)) && (empty($affilliated_other_arr))) {
+    $brewerAssignment = NULL;
+}
+
+else {
+    $brewerAssignment = array();
+    $brewerAssignment = array_merge($affilliated,$affilliated_other_arr);
+    $brewerAssignment = json_encode($brewerAssignment);
+}
+
+if (empty($brewerBreweryInfo)) $brewerBreweryInfo = "";
+else $brewerBreweryInfo = json_encode($brewerBreweryInfo);
+
+// print_r($brewerAssignment); exit();
 
 /**
  * Address GitHub Issue #1113
@@ -359,48 +413,25 @@ if (in_array($_SESSION['prefsLanguageFolder'], $name_check_langs)) {
     if (in_array($_SESSION['prefsLanguageFolder'], $last_name_exception_langs)) $last_name .= standardize_name($parsed_name['lname']);
     else $last_name .= $parsed_name['lname']; 
     if (!empty($parsed_name['suffix'])) $last_name .= " ".$parsed_name['suffix'];
+
 }
 
 else {
-    $first_name = $fname;
-    $last_name = $lname;
-    $first_name = sterilize($first_name);
-    $last_name = sterilize($last_name);
+    $first_name = sterilize($fname);
+    $last_name = sterilize($lname);
 }
 
-$address = standardize_name($purifier->purify($_POST['brewerAddress']));
-$address = sterilize($address);
-$city = standardize_name($purifier->purify($_POST['brewerCity']));
-$city = sterilize($city);
-$state = "";
+$address = sterilize($purifier->purify($_POST['brewerAddress']));
+$city = sterilize($purifier->purify($_POST['brewerCity']));
 
-if (isset($_POST['brewerCountry'])) {
+if ((isset($_POST['brewerStateUS'])) && (!empty($_POST['brewerStateUS']))) $state_province = $_POST['brewerStateUS'];
+elseif ((isset($_POST['brewerStateCA'])) && (!empty($_POST['brewerStateCA']))) $state_province = $_POST['brewerStateCA'];
+elseif ((isset($_POST['brewerStateAUS'])) && (!empty($_POST['brewerStateAUS']))) $state_province = $_POST['brewerStateAUS'];
+elseif ((isset($_POST['brewerStateNon'])) && (!empty($_POST['brewerStateNon']))) $state_province = $purifier->purify($_POST['brewerStateNon']);
+else $state_province = "";
 
-    if ($_POST['brewerCountry'] == "United States") {
-        if ((isset($_POST['brewerStateUS'])) && ($_POST['brewerStateUS'] != "")) $state = $_POST['brewerStateUS'];
-    }
-
-    if ($_POST['brewerCountry'] == "Canada") {
-        if ((isset($_POST['brewerStateCA'])) && ($_POST['brewerStateCA'] != "")) $state = $_POST['brewerStateCA'];
-    }
-
-    if ($_POST['brewerCountry'] == "Australia") {
-        if ((isset($_POST['brewerStateAUS'])) && ($_POST['brewerStateAUS'] != "")) $state = $_POST['brewerStateAUS'];
-    }
-
-    else {
-
-        if ((isset($_POST['brewerStateNon'])) && ($_POST['brewerStateNon'] != "")) {
-            $state = $purifier->purify($_POST['brewerStateNon']);
-            if (strlen($state) > 2) $state = standardize_name($state);
-            else $state = strtoupper($state);
-        }
-
-    }
-
-}
-
-if (!empty($state)) $state = sterilize($state);
+if (strlen($state_province) <= 2) $state_province = strtoupper($state_province);
+$state_province = sterilize($state_province);
 
 // Set all locations as YES for quick adds
 if ($view == "quick") {

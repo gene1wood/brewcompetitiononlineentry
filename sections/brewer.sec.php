@@ -6,6 +6,16 @@
  *
  */
 
+/*
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (!isset($base_url)))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
+
 if ($section != "step2") {
     include_once (DB.'judging_locations.db.php');
     include_once (DB.'stewarding.db.php');
@@ -17,7 +27,8 @@ include_once (DB.'dropoff.db.php');
 
 if ($section != "step2") {
 
-    if (($row_brewer['brewerCountry'] == "United States")) $us_phone = TRUE; else $us_phone = FALSE;
+    if (($row_brewer['brewerCountry'] == "United States")) $us_phone = TRUE; 
+    else $us_phone = FALSE;
 
     $phone1 = $row_brewer['brewerPhone1'];
     $phone2 = $row_brewer['brewerPhone2'];
@@ -32,6 +43,8 @@ if ($section != "step2") {
 $show_judge_steward_fields = TRUE;
 $entrant_type_brewery = FALSE;
 $pro_entrant = FALSE;
+$club_other = FALSE;
+$affiliated_other = FALSE;
 
 if ($section == "step2") {
     $_SESSION['prefsProEdition'] = 0;
@@ -83,7 +96,7 @@ else {
     if ($section == "brewer") $form_action .= "list";
     else $form_action .= "admin";
     $form_action .= "&amp;go=".$go."&amp;filter=".$filter."&amp;action=".$action."&amp;dbTable=".$brewer_db_table;
-   // if ($table_assignment) $form_action .= "&amp;view=assigned";
+    // if ($table_assignment) $form_action .= "&amp;view=assigned";
     if ($action == "edit") $form_action .= "&amp;id=".$row_brewer['id'];
 }
 
@@ -92,7 +105,6 @@ if (($_SESSION['prefsProEdition'] == 0) || (($_SESSION['prefsProEdition'] == 1) 
     // Build Clubs dropdown
     $club_options = "";
     $club_alert = "";
-    $club_other = FALSE;
 
     if ($section != "step2") {
         if ((!empty($row_brewer['brewerClubs'])) && (!in_array($row_brewer['brewerClubs'],$club_array))) {
@@ -113,6 +125,10 @@ if (($_SESSION['prefsProEdition'] == 0) || (($_SESSION['prefsProEdition'] == 1) 
 
 }
 
+$organization_options = "";
+
+if ($show_judge_steward_fields) include(DB.'organizations.db.php');
+
 $security_questions_display = (array_rand($security_question, 5));
 $security = "";
 if ($section != "step2") {
@@ -123,6 +139,7 @@ if ($section != "step2") {
 }
 
 asort($countries);
+
 $country_select = "";
 foreach ($countries as $country) {
     $country_select .= "<option value=\"".$country."\" ";
@@ -259,13 +276,14 @@ if ((isset($row_judging3)) && (!empty($row_judging3))) {
         }
 
     }  while ($row_judging3 = mysqli_fetch_assoc($judging3)); 
+
 }
 
-if (($_SESSION['prefsProEdition'] == 1) && (!$show_judge_steward_fields)) $pro_entrant = TRUE;
+if (($_SESSION['prefsProEdition'] == 1) && ((!$show_judge_steward_fields) || ($go == "admin"))) $pro_entrant = TRUE;
 
 // Build drop-off select element
 $dropoff_select = "";
-if ($section != "step2") {
+if (($section != "step2") && ($row_brewer) && ($row_dropoff)) {
     do {
         if (($action == "edit") && ($row_brewer['brewerDropOff'] == $row_dropoff['id'])) $selected = "SELECTED";
         else $selected = "";
@@ -290,23 +308,14 @@ else {
 
 if ($go != "admin") echo $info_msg;
 ?>
-<script type='text/javascript'>
-var action = "<?php echo $action; ?>";
-var club_other = <?php if ($club_other) echo "true"; else echo "false"; ?>;
-var brewer_judge = "N";
-var brewer_steward = "N";
-var brewer_staff = "N";
-var user_question_answer = "<?php if (isset($_SESSION['userQuestionAnswer'])) echo $_SESSION['userQuestionAnswer']; ?>"
-if (action == "edit") {
-    var brewer_country = "<?php if (isset($row_brewer)) echo $row_brewer['brewerCountry']; ?>";
-    var brewer_judge = "<?php if (isset($row_brewer)) echo $row_brewer['brewerJudge']; ?>";
-    var brewer_steward = "<?php if (isset($row_brewer)) echo $row_brewer['brewerSteward']; ?>";
-    var brewer_staff = "<?php if (isset($row_brewer)) echo $row_brewer['brewerStaff']; ?>";
-}
-</script>
-<script src="<?php echo $base_url; ?>js_includes/add_edit_user.min.js"></script>
-<form class="form-horizontal" data-toggle="validator" action="<?php echo $form_action; ?>" method="POST" name="form1" id="form1">
-
+<form id="submit-form" class="form-horizontal hide-loader-form-submit" data-toggle="validator" action="<?php echo $form_action; ?>" method="POST" name="form1">
+<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<div class="form-group">
+    <label class="col-lg-3 col-md-3 col-sm-4 col-xs-12"></label>
+    <div class="col-lg-9 col-md-9 col-sm-8 col-xs-12">
+        <p class="bcoem-form-info text-warning"><i class="fa fa-star"></i> <strong>= <?php echo $label_required_info; ?></strong></p>
+    </div>
+</div>
 <?php 
 include (SECTIONS.'brewer_form_0.sec.php'); // Participant Info
 if (!$entrant_type_brewery) include (SECTIONS.'brewer_form_1.sec.php'); // Info for individuals only (not orgs)
@@ -339,10 +348,13 @@ if (($go != "entrant") && ($section != "step2")) include (SECTIONS.'brewer_form_
 <div class="form-group">
     <div class="col-lg-offset-2 col-md-offset-3 col-sm-offset-4">
         <!-- Input Here -->
-        <button name="submit" type="submit" class="btn btn-primary" ><?php echo $submit_text; ?> </button>
+        <button id="form-submit-button" name="submit" type="submit" class="btn btn-primary" ><?php echo $submit_text; ?> </button>
     </div>
 </div><!-- Form Group -->
+<div class="alert alert-warning" style="margin-top: 10px;" id="form-submit-button-disabled-msg-required">
+    <?php echo sprintf("<p><i class=\"fa fa-exclamation-triangle\"></i> <strong>%s</strong> %s</p>",$form_required_fields_00,$form_required_fields_01); ?>
+</div>
 </form>
-<?php } // WAY up top.. end if (($section == "step2") || ($action == "add") || (($action == "edit") && (($_SESSION['loginUsername'] == $row_brewerID['brewerEmail'])) || ($_SESSION['userLevel'] <= "1")))
+<?php } // WAY up top... end if (($section == "step2") || ($action == "add") || (($action == "edit") && (($_SESSION['loginUsername'] == $row_brewerID['brewerEmail'])) || ($_SESSION['userLevel'] <= "1")))
 else echo "<p class='lead'>You can only edit your own profile.</p>";
 ?>

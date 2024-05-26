@@ -1,4 +1,13 @@
 <?php
+
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && ($_SESSION['userLevel'] > 0))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+
 require (DB.'archive.db.php');
 require (DB.'styles.db.php');
 
@@ -62,6 +71,7 @@ foreach ($style_sets as $style_set) {
     </div><!-- ./button group -->
 </div>
 <form data-toggle="validator" role="form" id="formfield" class="form-horizontal" action="<?php echo $base_url; ?>includes/process.inc.php?action=archive&go=<?php echo $action; if ($action == "edit") echo "&filter=".$row_archive['archiveSuffix']."&id=".$id; ?>" method="post" name="form1">
+<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
 <input type="hidden" name="action" value="add_form" />
 <div class="bcoem-admin-element hidden-print">
 <?php if ($action == "edit") echo "<p class=\"alert alert-warning\"><i class=\"fa fa-lg fa-exclamation-circle\"></i> ".$archive_text_017."</p>"; else echo "<p>".$archive_text_010."</p>"; ?>
@@ -73,7 +83,7 @@ foreach ($style_sets as $style_set) {
 		<div class="input-group has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="archiveSuffix" name="archiveSuffix" type="text" placeholder="<?php echo date('Y'); ?> or Q2<?php echo date('Y'); ?>, etc." pattern="^[a-zA-Z0-9]+$" autofocus required value="<?php if ($action == "edit") echo $row_archive['archiveSuffix']; ?>">
-			<span class="input-group-addon" id="mod_name-addon2"><span class="fa fa-star"></span></span>
+			<span class="input-group-addon" id="mod_name-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<span class="help-block with-errors"></span>
         <span id="helpBlock" class="help-block"><?php echo $archive_text_011; ?></span>
@@ -277,7 +287,7 @@ foreach ($style_sets as $style_set) {
     <th width="12%"><?php echo $table_header4; ?></th>
     <th width="12%"><?php echo $table_header5; ?></th>
     <th width="12%"><?php echo $table_header6; ?></th>
-    <th width="12%" class="hidden-xs hidden-sm"><?php echo $label_admin_winner_display; ?> <a tabindex="0" type="button" role="button" data-toggle="popover" data-trigger="hover" data-placement="auto top" data-container="body" data-content="<?php echo $archive_text_019; ?>"><span class="fa fa-lg fa-question-circle"></span></th>
+    <th width="12%" class="hidden-xs hidden-sm"><?php echo $label_admin_winner_display; ?> <a class="hide-loader" tabindex="0" type="button" role="button" data-toggle="popover" data-html="true" data-trigger="hover" data-placement="auto top" data-container="body" data-content="<?php echo $archive_text_019; if ($_SESSION['prefsProEdition'] == 0) { ?> Select the <span class='fa fa-lg fa-file-excel'></span> icon to download a CSV of winner data.<?php } ?>"><span class="fa fa-lg fa-question-circle"></span></th>
     <th><?php echo $table_header7; ?></th>
 </thead>
 <tbody>
@@ -341,7 +351,14 @@ foreach ($style_sets as $style_set) {
         } else echo $row_archive['archiveSuffix']. " - ".$label_not_archived;
 	}  ?>
     </td>
-    <td class="hidden-xs hidden-sm"><?php echo yes_no($row_archive['archiveDisplayWinners'],$base_url,1); ?></td>
+    <td class="hidden-xs hidden-sm">
+        <?php 
+        echo yes_no($row_archive['archiveDisplayWinners'],$base_url,1);
+        if (($row_archive['archiveDisplayWinners'] == "Y") && ($_SESSION['prefsProEdition'] == 0)) {
+        ?>
+        &nbsp;<a target="_blank" data-toggle="tooltip" data-placement="top" title="Download a CSV of this archive's winner data." href="<?php echo $base_url; ?>includes/output.inc.php?section=export-entries&amp;go=csv&amp;filter=<?php echo $row_archive['archiveSuffix']; ?>&amp;tb=circuit&amp;sort=<?php echo $row_archive['archiveSuffix']; ?>" target="_blank"><span class="fa fa-lg fa-file-excel"></span></a>
+        <?php } ?>
+    </td>
     <td>
         <a href="<?php echo $base_url; ?>index.php?section=<?php echo $section; ?>&amp;go=<?php echo $go; ?>&amp;action=edit&amp;id=<?php echo $row_archive['id']; ?>"><span class="fa fa-lg fa-pencil"></span></a>&nbsp;
         <a class="hide-loader" href="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $section; ?>&amp;go=<?php echo $go; ?>&amp;filter=<?php echo $row_archive['archiveSuffix']; ?>&amp;dbTable=<?php echo $archive_db_table; ?>&amp;action=delete&amp;id=<?php echo $row_archive['id']; ?>" data-toggle="tooltip" data-placement="top" title=" <?php echo $label_delete." ".$row_archive['archiveSuffix']; ?>" data-confirm="<?php echo $archive_text_015." ".$row_archive['archiveSuffix'].". ".$archive_text_016; ?>"><span class="fa fa-lg fa-trash-o"></span></a>

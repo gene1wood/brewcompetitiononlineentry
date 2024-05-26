@@ -6,44 +6,15 @@
  *
  */
 
-
-/* ---------------- PUBLIC Pages Rebuild Info ---------------------
-
-Beginning with the 1.3.0 release, an effort was begun to separate the programming
-layer from the presentation layer for all scripts with this header.
-
-All Public pages have certain variables in common that build the page:
-
-	$primary_page_info = any information related to the page
-
-	$header1_X = an <h2> header on the page
-	$header2_X = an <h3> subheader on the page
-
-	$page_infoX = the bulk of the information on the page.
-	$print_page_link = the "Print This Page" link
-	$competition_logo = display of the competition's logo
-
-	$labelX = the various labels in a table or on a form
-	$table_headX = all table headers (column names)
-	$table_bodyX = table body info
-	$messageX = various messages to display
-
-	$print_page_link = "<p><span class='icon'><img src='".$base_url."images/printer.png' border='0' alt='Print' title='Print' /></span><a id='modal_window_link' href='".$base_url."output/print.php?section=".$section."&amp;action=print' title='Print'>Print This Page</a></p>";
-	$competition_logo = "<img src='".$base_url."user_images/".$_SESSION['contestLogo']."' width='".$_SESSION['prefsCompLogoSize']."' style='float:right; padding: 5px 0 5px 5px' alt='Competition Logo' title='Competition Logo' />";
-
-Declare all variables empty at the top of the script. Add on later...
-	$primary_page_info = "";
-	$header1_1 = "";
-	$page_info1 = "";
-	$header1_2 = "";
-	$page_info2 = "";
-
-	$table_head1 = "";
-	$table_body1 = "";
-
-	etc., etc., etc.
-
- * ---------------- END Rebuild Info --------------------- */
+/*
+// Redirect if directly accessed
+if ((!isset($_SESSION['prefs'.$prefix_session])) || ((isset($_SESSION['prefs'.$prefix_session])) && (!isset($base_url)))) {
+    $redirect = "../../index.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
 
 if ($row_scored_entries['count'] > 0) {
 
@@ -93,6 +64,8 @@ if ($row_scored_entries['count'] > 0) {
 
 			do {
 
+				if ((isset($row_scores['brewCategory'])) && (!empty($row_scores['brewCategory']))) {
+
 				$entry_name = html_entity_decode($row_scores['brewName'],ENT_QUOTES|ENT_XML1,"UTF-8");
     			$entry_name = htmlentities($entry_name,ENT_QUOTES|ENT_SUBSTITUTE|ENT_HTML5,"UTF-8");
 
@@ -132,11 +105,21 @@ if ($row_scored_entries['count'] > 0) {
 					$table_body1 .= display_place($row_scores['scorePlace'],2);
 					$table_body1 .= "</td>";
 				}
-
+				
 				$table_body1 .= "<td width=\"25%\">";
-				if ($_SESSION['prefsProEdition'] == 1) $table_body1 .= $row_scores['brewerBreweryName'];
-				else $table_body1 .= $row_scores['brewerFirstName']." ".$row_scores['brewerLastName'];
+				
+				if ($_SESSION['prefsProEdition'] == 1) {
+				    if (empty($row_scores['brewerBreweryName'])) $table_body1 .= $row_scores['brewerFirstName']." ".$row_scores['brewerLastName'];
+				    else $table_body1 .= $row_scores['brewerBreweryName'];
+				}
+				
+				else {
+					$table_body1 .= $row_scores['brewerFirstName']." ".$row_scores['brewerLastName'];
+					if ((isset($row_scores['brewerMHP'])) && (!empty($row_scores['brewerMHP']))) $table_body1 .= " <span data-toggle=\"tooltip\" data-placement=\"top\" title=\"Master Homebrewer Program Participant\" style=\"color: #F2D06C; background-color: #000;\" class=\"badge\">MHP</span>";
+				}
+				
 				if (($_SESSION['prefsProEdition'] == 0) && (!empty($row_scores['brewCoBrewer'])) && ($row_scores['brewCoBrewer'] != " ")) $table_body1 .= "<br>".$label_cobrewer.": ".$row_scores['brewCoBrewer'];
+				
 				$table_body1 .= "</td>";
 
 				$table_body1 .= "<td>";
@@ -145,9 +128,11 @@ if ($row_scored_entries['count'] > 0) {
 
 				$table_body1 .= "<td width=\"25%\">";
 				$table_body1 .= $style.": ".$style_long;
-				if ((!empty($row_scores['brewInfo'])) && ($section != "results")) {
-					$table_body1 .= " <a href=\"#".$row_scores['id']."\"  tabindex=\"0\" role=\"button\" data-toggle=\"popover\" data-trigger=\"hover\" data-placement=\"auto top\" data-container=\"body\" title=\"".$label_info."\" data-content=\"".str_replace("^", " ", $row_scores['brewInfo'])."\"><span class=\"hidden-xs hidden-sm hidden-md hidden-print fa fa-info-circle\"></span></a></td>";
+
+				if ((!empty($row_scores['brewInfo'])) && ($section != "results") && ($section != "past-winners")) {
+					$table_body1 .= " <a href=\"#".$row_scores['id']."\"  tabindex=\"0\" role=\"button\" data-toggle=\"popover\" data-trigger=\"hover\" data-placement=\"auto top\" data-container=\"body\" title=\"".$label_info."\" data-content=\"".str_replace("^", " ", $row_scores['brewInfo'])."\"><span class=\"hidden-xs hidden-sm hidden-md hidden-print fa fa-info-circle\"></span></a>";
 				}
+				
 				$table_body1 .= "</td>";
 
 				if ($_SESSION['prefsProEdition'] == 0) {
@@ -167,10 +152,13 @@ if ($row_scored_entries['count'] > 0) {
 				}
 
 				$table_body1 .= "</tr>";
+			}
 
 			 } while ($row_scores = mysqli_fetch_assoc($scores));
 	$random1 = "";
 	$random1 .= random_generator(12,1);
+
+	if (!empty($table_body1)) {
 	?>
 	<?php echo $header1_1; ?></h3>
 	 <script type="text/javascript" language="javascript">
@@ -204,7 +192,8 @@ if ($row_scored_entries['count'] > 0) {
 		</tbody>
 		</table>
 	</div>
-	<?php 	}
+	<?php 		}
+			}
 		}
 	}
 } // end if score count > 0

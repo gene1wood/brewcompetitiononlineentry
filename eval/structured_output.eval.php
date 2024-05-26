@@ -1,4 +1,15 @@
 <?php
+
+/*
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (!isset($base_url)))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
+
 $flaws_table = "";
 $entry_flaws = "";  
 
@@ -85,7 +96,8 @@ foreach ($html_output as $current_row) {
 }
 
 $flaws_table .= "</table>";
-
+if ($nw_cider) include(EVALS.'nw_structured_cider_output.eval.php');
+else {
 ?>
 <!-- Aroma -->
 <h5 class="header-h5 header-bdr-bottom"><?php echo $label_aroma; ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalAromaScore']; ?></span>/<?php echo $aroma_possible; ?></span></h5>
@@ -111,7 +123,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($aroma_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($aroma_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -159,7 +171,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceColor'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceColor'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -194,7 +206,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceClarity'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceClarity'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -229,7 +241,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceHeadSize'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceHeadSize'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -261,7 +273,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceHeadReten'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceHeadReten'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -292,7 +304,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceHeadColor'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceHeadColor'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -326,7 +338,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceLegs'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceLegs'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -357,7 +369,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($appearance_data['evalAppearanceCarb'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($appearance_data['evalAppearanceCarb'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -401,7 +413,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($flavor_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($flavor_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -438,7 +450,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($flavor_data['evalFlavorBalance'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($flavor_data['evalFlavorBalance'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -472,7 +484,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($flavor_data['evalFlavorFinish'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($flavor_data['evalFlavorFinish'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -509,7 +521,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($flavor_data['evalFlavorBody'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($flavor_data['evalFlavorBody'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -542,7 +554,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($flavor_data['evalFlavorFinish'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($flavor_data['evalFlavorFinish'] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -598,7 +610,7 @@ $flaws_table .= "</table>";
         </tr>
         <tr style="border-left: 1px solid #000; border-right: 1px solid #000;">
             <?php for ($i=0; $i <= 10; $i++) { ?>
-            <td style="border-bottom: 1px solid #000;"><?php if ($mouthfeel_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
+            <td style="border-bottom: 1px solid #000; text-align:center;"><?php if ($mouthfeel_data[$value] == $i) echo "<i class=\"fa fa-lg fa-caret-down\"></i>"; else echo "&nbsp;"; ?></td>
             <?php } ?>
         </tr>
     </table>
@@ -750,10 +762,11 @@ $flaws_table .= "</table>";
         </div>
     </div>
 </div><!-- ./ scoring guide -->
+<?php } ?>
 
 <!-- Footer -->
-<p style="padding-top: 30px;"><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p>
+<?php if (!$nw_cider) { ?><p style="padding-top: 2em;"><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p><?php } ?>
 <?php if (!empty($row_eval['evalFinalScore'])) { ?>
-<p><small><em>** <?php echo $evaluation_info_069; ?></em></small></p>
+<p style="padding-top: 1em;"><small><em>** <?php echo $evaluation_info_069; ?></em></small></p>
 <?php } ?>
 <div style="page-break-after: always;"></div>

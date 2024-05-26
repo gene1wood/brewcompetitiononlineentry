@@ -1,4 +1,13 @@
 <?php
+
+// Redirect if directly accessed
+if ((!isset($_SESSION['prefs'.$prefix_session])) || ((isset($_SESSION['prefs'.$prefix_session])) && (!isset($base_url)))) {
+    $redirect = "../../index.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+
 // Build alerts
 $alert_text_004 = sprintf("<strong>%s</strong> %s",$alert_text_002,$alert_text_003);
 $alert_text_007 = sprintf("<strong>%s</strong> <a href=\"".$base_url."index.php?section=admin&amp;action=add&amp;go=dropoff\" class=\"alert-link\">%s</a>",$alert_text_005,$alert_text_006);
@@ -26,9 +35,9 @@ $alert_text_064 = sprintf("<strong>%s</strong> %s",$alert_text_062,$alert_text_0
 $alert_text_067 = sprintf("<strong>%s</strong> %s",$alert_text_065,$alert_text_066);
 $alert_text_071 = sprintf("<strong>%s</strong> %s",$alert_text_068,$alert_text_070);
 $alert_text_075 = sprintf("<strong>%s</strong> %s",$alert_text_072,$alert_text_073);
-if (!$steward_limit) $alert_text_075 .= $alert_text_074;
+if (!$steward_limit) $alert_text_075 .= " ".$alert_text_074;
 $alert_text_079 = sprintf("<strong>%s</strong> %s ",$alert_text_076,$alert_text_077);
-if (!$judge_limit) $alert_text_079 .= $alert_text_078;
+if (!$judge_limit) $alert_text_079 .= " ".$alert_text_078;
 
 if ($msg != "default") { 
 
@@ -40,15 +49,81 @@ if ($msg != "default") {
    */
 
   $info_msg_alerts = array(11,12,99);
-  $warning_msg_alerts = array(6,37,10);
-  $danger_msg_alerts = array(3,13,15,18,19,24,27,30,755);
+  $warning_msg_alerts = array(0,4,6,8,37,10);
+  $danger_msg_alerts = array(3,13,15,18,19,24,27,30,98,755);
+  $success_msg_alerts = array();
+
+  $success_msg = array();
+  $info_msg = array();
+  $warning_msg = array();
+  $danger_msg = array();
+
+  if ($section == "login") {
+    $warning_msg = array(1,4,7);
+    $danger_msg = array(1);
+  }
+
+  if ($section == "list") {
+    $success_msg = array(3,10);
+    $danger_msg = array(5,11,12);
+    $warning_msg = array(8,9);
+    unset($danger_msg_alerts[0]);
+    unset($warning_msg_alerts[3]);
+    unset($info_msg_alerts[0]);
+    unset($info_msg_alerts[1]);
+  }
+
+  if ($section == "contact") $danger_msg[] = 2;
+
+  if ($section == "pay") {
+    $success_msg = array(10,12);
+    $danger_msg = array(11);
+    unset($warning_msg_alerts[3]);
+    unset($info_msg_alerts[0]);
+    unset($info_msg_alerts[1]);
+  }
+
+  if ($section == "user") {
+    $warning_msg = array(1);
+    $danger_msg = array(2);
+  }
+
+  if ($section == "evaluation") {
+    $success_msg = array(3);
+    unset($danger_msg_alerts[0]);
+  }
+
+  if ($section == "register") {
+    $danger_msg = array(1,2,5,6);
+    unset($warning_msg_alerts[2]);
+  }
+
+  if ($section == "brew") {
+    $warning_msg = array(1);
+  }
+
+  if ($section == "admin") {
+    $success_msg = array(4);
+    $danger_msg = array(8,10);
+    unset($warning_msg_alerts[1]);
+    unset($warning_msg_alerts[3]);
+    unset($warning_msg_alerts[5]);
+  }
+
+  $success_msg_alerts = array_merge($success_msg_alerts,$success_msg);
+  $info_msg_alerts = array_merge($info_msg_alerts,$info_msg);
+  $warning_msg_alerts = array_merge($warning_msg_alerts,$warning_msg);
+  $danger_msg_alerts = array_merge($danger_msg_alerts,$danger_msg);
+
+  $alert_type = "alert-success";
+  $alert_icon = "fa-check-circle";
 
   if (in_array($msg,$info_msg_alerts)) {
     $alert_type = "alert-info";
     $alert_icon = "fa-info-circle";
   }
 
-  elseif (in_array($msg,$warning_msg_alerts)) {
+  elseif ((in_array($msg,$warning_msg_alerts)) || (strstr($msg,"1-"))) {
     $alert_type = "alert-warning";
     $alert_icon = "fa-exclamation-triangle";
   }
@@ -58,7 +133,7 @@ if ($msg != "default") {
     $alert_icon = "fa-exclamation-circle";
   }
 
-  else {
+  elseif (in_array($msg,$success_msg_alerts)) {
     $alert_type = "alert-success";
     $alert_icon = "fa-check-circle";
   }
@@ -159,10 +234,18 @@ if ($msg != "default") {
   <?php } ?>
 <?php } // end if ($section == "admin") ?>
 
-
 <?php if ($logged_in) { ?>
 
   <?php if ($section == "admin") { ?>
+
+    <?php if (($go == "default") && ($judging_past == 0) && ($_SESSION['userLevel'] == 0) && ((isset($_SESSION['prefsWinnerDelay'])) && (time() >= $_SESSION['prefsWinnerDelay']) && (time() < ($_SESSION['prefsWinnerDelay'] + 604800)))) { ?>
+
+      <div class="alert alert-info alert-dismissible hidden-print fade in" role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <p><span class="fa fa-lg fa-info-circle"></span> <strong>Results are published &ndash; congratulations!</strong> Now is the time to make sure you complete any applicable post-competition tasks like submitting your BJCP Organizer Report, downloading circuit data, or downloading and sending member results to the Master Homebrewer Program. BCOE&amp;M can help &ndash; simply select <a class="hide-loader alert-link" href="#" data-toggle="modal" data-target="#post-comp">this Post-Competition Tasks link</a> or the button below for a list of actions commonly completed after a competition concludes.</p>
+      </div>
+
+    <?php } ?>
 
     <?php if (($go == "entries") || ($go == "judging_scores") || ($go == "judging_scores_bos")) { ?>
     <style type="text/css">
@@ -181,7 +264,7 @@ if ($msg != "default") {
     </section>
     <?php } ?>
 
-  <?php } ?>
+  <?php } // end if ($section == "admin") ?>
 
   <?php if ($section == "brew") { ?>
 
@@ -282,8 +365,7 @@ if ($msg != "default") {
     </div>
   <?php } ?>
 
-  <?php
-  if (($registration_open == 1) && (!$ua) && ($section == "default") && ($comp_entry_limit) && ($msg == "default")) { ?>
+  <?php if (($registration_open == 1) && (!$ua) && ($section == "default") && ($comp_entry_limit) && ($msg == "default")) { ?>
     <!-- Entry limit reached -->
     <div class="alert alert-danger alert-dismissible hidden-print fade in" role="alert">
       <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
@@ -363,7 +445,7 @@ if ($msg != "default") {
     </div>
 <?php } ?>
 
-<?php if (($recently_updated) && (($section == "admin") && ($go == "default"))) { ?>
+<?php if (($recently_updated) && ((isset($_SESSION['update_summary'])) && (!empty($_SESSION['update_summary']))) && ($section == "admin") && ($go == "default")) { ?>
     <div class="alert alert-info alert-dismissible hidden-print fade in" role="alert">
         <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
         <p><span class="fa fa-lg fa-info-circle"></span> Your installation was recently updated to <strong>BCOE&amp;M <?php echo $current_version_display; ?></strong>. Select the <?php echo $current_version_display; ?> Update Summary button below for a full account of what changes were made.</p>
@@ -378,3 +460,42 @@ if ($msg != "default") {
         <p>Select the <?php echo $current_version_display; ?> Update Summary button below for details. Errors are in <span class="text-danger">red text</span>.</p>
     </div>
 <?php } ?>
+
+<?php if ((MAINT) && ($logged_in) && ($_SESSION['userLevel'] == 0)) { ?>
+  <div class="alert alert-danger alert-dismissible hidden-print fade in" role="alert">
+      <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+      <p><span class="fa fa-lg fa-exclamation-circle"></span> <strong>Your installation is in Maintenance Mode.</strong> As a Top-level Admin, you are able perform all administration functions as normal. All others who attempt to access the site will see the <a href="<?php echo $base_url; ?>maintenance.php">Maintenance page</a>.</p>
+  </div>
+<?php } ?>
+
+<?php if (($registration_open == 1) && (!$ua) && (($section == "default") || ($section == "list")) && ((!$comp_entry_limit) || (!$comp_paid_entry_limit)) && ($msg == "default")) {
+
+    $style_types_disabled = "";
+    
+    if (!empty($style_type_limits_alert)) {
+        
+        foreach ($style_type_limits_alert as $key => $value) {
+
+          if ($value > 0) {
+
+            if (array_key_exists($key, $style_types_translations)) $style_types_disabled .= strtolower($style_types_translations[$key])." (".strtolower($label_limit)." - ".$value."), ";
+            else $style_types_disabled .= strtolower($key)." (".strtolower($label_limit)." - ".$value."), ";
+
+          }
+
+        }
+
+        $style_types_disabled = rtrim($style_types_disabled,", ");
+
+      }
+
+  if (!empty($style_types_disabled)) { 
+
+?>
+<div class="alert alert-warning alert-dismissible hidden-print fade in" role="alert">
+    <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+    <p><span class="fa fa-lg fa-exclamation-circle"></span> <strong><?php echo $alert_text_093; ?></strong> <?php echo $alert_text_094.": ".$style_types_disabled; ?>.</p>
+</div>
+<?php } 
+} 
+?>

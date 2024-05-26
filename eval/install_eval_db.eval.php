@@ -1,4 +1,4 @@
-<?php 
+<?php
 $updateSQL = sprintf("CREATE TABLE `%s` (
   `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `eid` int(11) DEFAULT NULL COMMENT 'ID of entry from brewing table',
@@ -23,7 +23,7 @@ $updateSQL = sprintf("CREATE TABLE `%s` (
   `evalFlavorChecklist` mediumtext COLLATE utf8mb4_unicode_ci,
   `evalFlavorChecklistDesc` mediumtext COLLATE utf8mb4_unicode_ci,
   `evalFlavorComments` mediumtext COLLATE utf8mb4_unicode_ci,
-  `evalMouthfeelScore` tinyint(1) DEFAULT NULL,
+  `evalMouthfeelScore` tinyint(2) DEFAULT NULL,
   `evalMouthfeelChecklist` mediumtext COLLATE utf8mb4_unicode_ci,
   `evalMouthfeelChecklistDesc` mediumtext COLLATE utf8mb4_unicode_ci,
   `evalMouthfeelComments` mediumtext COLLATE utf8mb4_unicode_ci,
@@ -68,4 +68,5 @@ if (!check_update("jPrefsScoresheet", $prefix."judging_preferences")) {
   unset($_SESSION['prefs'.$prefix_session]);
 
 }
+
 ?>

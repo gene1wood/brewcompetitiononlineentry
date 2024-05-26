@@ -1,8 +1,15 @@
 <?php
+/*
+// Redirect if directly accessed without authenticated session
+if ((session_status() == PHP_SESSION_NONE) || ((isset($_SESSION['loginUsername'])) && (!function_exists('sterilize')))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
+
 ob_start();
-require ('../paths.php');
-require (CONFIG.'config.php');
-require (LIB.'common.lib.php');
 require (CLASSES.'phpass/PasswordHash.php');
 
 $section = "default";

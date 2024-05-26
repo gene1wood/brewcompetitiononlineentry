@@ -38,18 +38,18 @@ $current_time = getTimeZoneDateTime($_SESSION['prefsTimeZone'], time(), $_SESSIO
 $custom_parts = explode("|",$_POST['custom']);
 
 // Assign posted variables to local variables
-$data['payment_status'] = filter_var($_POST['payment_status'],FILTER_SANITIZE_STRING);
-$data['item_name'] = filter_var($_POST['item_name'],FILTER_SANITIZE_STRING);
-$data['item_number'] = filter_var($_POST['item_number'],FILTER_SANITIZE_STRING);
-$data['payment_status'] = filter_var($_POST['payment_status'],FILTER_SANITIZE_STRING);
-$data['payment_amount'] = filter_var($_POST['mc_gross'],FILTER_SANITIZE_STRING);
-$data['payment_currency'] = filter_var($_POST['mc_currency'],FILTER_SANITIZE_STRING);
-$data['txn_id'] = filter_var($_POST['txn_id'],FILTER_SANITIZE_STRING);
+$data['payment_status'] = sterilize($_POST['payment_status']);
+$data['item_name'] = sterilize($_POST['item_name']);
+$data['item_number'] = sterilize($_POST['item_number']);
+$data['payment_status'] = sterilize($_POST['payment_status']);
+$data['payment_amount'] = sterilize($_POST['mc_gross']);
+$data['payment_currency'] = sterilize($_POST['mc_currency']);
+$data['txn_id'] = sterilize($_POST['txn_id']);
 $data['receiver_email'] = filter_var($_POST['receiver_email'],FILTER_SANITIZE_EMAIL);
-$data['first_name'] = filter_var($_POST['first_name'],FILTER_SANITIZE_STRING);
-$data['last_name'] = filter_var($_POST['last_name'],FILTER_SANITIZE_STRING);
+$data['first_name'] = sterilize($_POST['first_name']);
+$data['last_name'] = sterilize($_POST['last_name']);
 $data['payer_email'] = filter_var($_POST['payer_email'],FILTER_SANITIZE_EMAIL);
-$data['custom'] = filter_var($_POST['custom'],FILTER_SANITIZE_STRING);
+$data['custom'] = sterilize($_POST['custom']);
 
 $query_user_info = sprintf("SELECT brewerFirstName,brewerLastName,brewerEmail FROM %s WHERE uid='%s'", $prefix."brewer",$custom_parts[0]);
 $user_info = mysqli_query($connection,$query_user_info) or die (mysqli_error($connection));
@@ -153,7 +153,9 @@ if ($verified) {
 		$display_entry_numbers = implode(", ", $display_entry_no);
 		$display_entry_numbers = rtrim($display_entry_numbers, ", ");
 
-		$to_recipient = mb_convert_encoding($row_user_info['brewerFirstName']." ".$row_user_info['brewerLastName'], "UTF-8");
+		$to_recipient = $row_user_info['brewerFirstName']." ".$row_user_info['brewerLastName'];
+		$to_recipient = html_entity_decode($to_recipient);
+		$to_recipient = mb_convert_encoding($to_recipient, "UTF-8");
 
 		$to_email = filter_var($row_user_info['brewerEmail'],FILTER_SANITIZE_EMAIL);
 		$to_email = mb_convert_encoding($to_email, "UTF-8");
@@ -161,13 +163,16 @@ if ($verified) {
 
 		$from_email = filter_var($from_email,FILTER_SANITIZE_EMAIL);
 		$from_email = mb_convert_encoding($from_email, "UTF-8");
+		
+		$cc_recipient = $data['first_name']." ".$data['last_name'];
+		$cc_recipient = html_entity_decode($cc_recipient);
+		$cc_recipient = mb_convert_encoding($cc_recipient, "UTF-8");
 
 		$cc_email = mb_convert_encoding($data['payer_email'], "UTF-8");
-		$cc_recipient = mb_convert_encoding($data['first_name']." ".$data['last_name'], "UTF-8");
 
 		$headers  = "MIME-Version: 1.0"."\r\n";
 		$headers .= "Content-type: text/html; charset=utf-8"."\r\n";
-		$headers .= "From: ".$row_logo['contestName']." Server <".$from_email.">"."\r\n";
+		$headers .= "From: ".html_entity_decode($row_logo['contestName'])." Server <".$from_email.">"."\r\n";
 		$headers .= "Reply-To: ".$from_name." <".$from_email.">"."\r\n";
 		$headers .= "Bcc: ".$cc_recipient. " <".$cc_email.">"."\r\n";
 

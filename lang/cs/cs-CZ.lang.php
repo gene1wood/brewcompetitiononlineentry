@@ -2,14 +2,14 @@
 /**
  * Module:      cs-CZ.lang.php
  * Description: This module houses all display text in the Czech language.
- * Updated:     November 21, 2022
+ * Updated:     November 6, 2023
  *  
  * To translate this file, first make a copy of it and rename it with the 
  * language name in the title.
  * 
  * ==============================
  * 
- * Use ISO 169-2 Standards for and WWW3C Language Tag Standards for naming 
+ * Use ISO 169-2 Standards and WWW3C Language Tag Standards for naming 
  * of language files. Use the ALPHA-2 letter code whenever possible.
  * 
  * ISO 169-2:
@@ -688,7 +688,7 @@ $brew_text_015 = "Druh výtažku (např. světlý, tmavý) nebo značka.";
 $brew_text_016 = "Druh sladu (plzeňský, pale ale, atd.)";
 $brew_text_017 = "Druh nebo název suroviny";
 $brew_text_018 = "Název chmelu.";
-$brew_text_019 = "Pouze čísla (např. 12.2, 6.6, atd.).";
+$brew_text_019 = "Pouze čísla.";
 $brew_text_020 = "Název kmene (např. 1056 American Ale).";
 $brew_text_021 = "Wyeast, White Labs, atd.";
 $brew_text_022 = "1 balíček, 2 ampule, 2000 ml, atd.";
@@ -818,14 +818,14 @@ $entry_info_text_032 = $label_cash;
 $entry_info_text_033 = $label_check.", vystavený na";
 $entry_info_text_034 = "Kreditní/debetní karta a e-check (prostřednictvím PayPalu)";
 $entry_info_text_035 = "Data degustace ještě nebyla určena. Prosím, navštivte náš web později.";
-$entry_info_text_036 = "Lahve se vzorky přijímáme na poštovní adrese počínaje";
+$entry_info_text_036 = "Lahve se vzorky přijímáme na poštovní adrese";
 $entry_info_text_037 = "Vzorky zasílejte na následující adresu:";
 $entry_info_text_038 = "Pečlivě zabalte své vzorky do pevné krabice. Vnitřek krabice vyložte plastovým pytlem na odpad. Oddělte a zabalte každou lahev odpovídajícím balicím materiálem. S množstvím materiálu to nepřehánějte!";
 $entry_info_text_039 = "Na balík napište: <em>Křehké! Neklopit!</em> Pro balení používejte dostatek bublinkové fólii nebo každou lahev vložte do vaku AirCover.";
 $entry_info_text_040 = "<em>Každý</em> ze štítků na vašich lahvích zabalete do malého sáčku před jeho upevněním na lahev. Tímto způsobem nám usnadníte určení, který vzorek se rozbil, pokud se něco stane při přepravě.";
 $entry_info_text_041 = "Vynasnažíme se vás kontaktovat, pokud se některý z vašich vzorků při přepravě rozbije.";
 $entry_info_text_042 = "Pokud se soutěž koná ve Spojených státech, mějte na paměti, že je <strong>zakázáno</strong> posílat vzorky pomocí United States Postal Service (USPS). <em>Pozn. překl.: Na zásilky zaslané prostřednictvím České pošty se žádný podobný zákaz nevztahuje.</em><br />Soukromé přepravní společnosti vám mohou odmítnout přepravu, pokud se dozví, že zásilka obsahuje sklo nebo alkoholické nápoje. Berte na vědomí, že vzorky zaslané mezinárodně mohou podléhat celnímu řízení. Zásilky mohou být otevřeny a vráceny odesilateli celní správou dle jejího uvážení. Je vaší povinností se řídit příslušnými zákony a nařízeními.";
-$entry_info_text_043 = "Začátek příjmu vzorků je";
+$entry_info_text_043 = "Začátek příjmu vzorků";
 $entry_info_text_044 = "Zobrazit na mapě místo";
 $entry_info_text_045 = "Klikněte pro povinné informace o vzorku";
 $entry_info_text_046 = "Pokud je název stylu s odkazem, má styl povinné požadavky na vzorek. Klikněte nebo se dotkněte názvu pro zobrazení požadavků podkategorie.";
@@ -1781,7 +1781,7 @@ $evaluation_info_067 = "Uveďte prosím hodnocení.";
 $evaluation_info_068 = "Uveďte konsensuální skóre - minimálně 5, maximálně 50.";
 $evaluation_info_069 = "Nejméně dva degustátoři ze sady, do které byl váš vzorek zadán, dosáhli konsensu o vašem konečném skóre. Není to nutně průměr jednotlivých skóre.";
 $evaluation_info_070 = "Na základě degustačního listu BJCP";
-$evaluation_info_071 = "Od vašeho hodnocení uplynulo 15 minut. I když máte dostatek času, než vás systém automaticky odhlásí, toto je zdvořilostní varování, abyste se ujistili, že dokončíte své hodnocení včas a abyste udrželi tempo posuzování v přijatelné míře.";
+$evaluation_info_071 = "Uplynulo 15+ minut.";
 $evaluation_info_072 = "Ve výchozím nastavení je automatické odhlášení prodlouženo na 30 minut pro hodnocení vzorků.";
 
 $alert_text_090 = "Vaše relace vyprší za dvě minuty. Můžete zůstat na aktuální stránce, abyste mohli dokončit práci, než vyprší čas, obnovit tuto stránku a pokračovat v aktuální relaci (data formuláře se mohou ztratit) nebo se odhlásit.";
@@ -1901,6 +1901,136 @@ $evaluation_info_093 = "Ve výše uvedeném poli Celkové hodnocení dojmu nebyl
 $evaluation_info_094 = "V jednom nebo více výše uvedených polích pro zpětnou vazbu / komentář nebylo dosaženo minimálního počtu slov.";
 
 /**
+ * ------------------------------------------------------------------------
+ * Version 2.6.0 Additions
+ * ------------------------------------------------------------------------
+ */
+
+$label_regional_variation = "Regionální Rozdíly";
+$label_characteristics = "Charakteristika";
+$label_intensity = "Intenzita";
+$label_quality = "Kvalita";
+$label_palate = "Patro";
+$label_medium = "Střední";
+$label_medium_dry = "Středně Suché";
+$label_medium_sweet = "Středně Sladká";
+$label_your_score = "Vaše Skóre";
+$label_summary_overall_impression = "Shrnutí Hodnocení a Celkový Dojem";
+$label_medal_count = "Počet Skupin Medailí";
+$label_best_brewer_place = "Nejlepší Pivovarské Místo";
+$label_industry_affiliations = "Členství v Průmyslových Organizacích";
+$label_deep_gold = "Hluboké Zlato";
+$label_chestnut = "Kaštany";
+$label_pink = "Růžová";
+$label_red = "Červená";
+$label_purple = "Fialová";
+$label_garnet = "Garnet";
+$label_clear = "Přehledně";
+$label_final_judging_date = "Datum Závěrečného Hodnocení";
+$label_entries_judged = "Posuzované Položky";
+$label_results_export = "Výsledky Exportu";
+$label_results_export_personal = "Export Osobních Výsledků";
+
+$brew_text_041 = "Nepovinné - uveďte regionální variantu (např. mexický ležák, holandský ležák, japonský rýžový ležák atd.).";
+
+$evaluation_info_095 = "Další přidělená hodnotící schůzka otevřena:";
+$evaluation_info_096 = "Pro usnadnění přípravy jsou přidělené stoly/lety a související záznamy k dispozici deset minut před začátkem zasedání.";
+$evaluation_info_097 = "Vaše další hodnotící zasedání je nyní k dispozici.";
+$evaluation_info_098 = "Obnovit zobrazení.";
+$evaluation_info_099 = "Minulá nebo současná soudní jednání:";
+$evaluation_info_100 = "Nadcházející hodnotící zasedání:";
+$evaluation_info_101 = "Uveďte prosím jiný popis barvy.";
+$evaluation_info_102 = "Zadejte celkový počet bodů - maximálně 50. V případě potřeby použijte níže uvedeného průvodce bodováním.";
+$evaluation_info_103 = "Uveďte své hodnocení - minimálně 5 bodů, maximálně 50 bodů.";
+
+$brewer_text_051 = "Vyberte oborové organizace, s nimiž jste spojeni jako zaměstnanci, dobrovolníci atd. To proto, abyste se ujistili, že nedochází ke střetu zájmů při přidělování porotců a stewardů k hodnocení přihlášek.";
+$brewer_text_052 = "<strong>Pokud některá z oborových organizací není v rozbalovacím seznamu výše uvedena, uveďte ji zde.</strong> Oddělte název každé organizace čárkou (,) nebo středníkem (;). Některé symboly nejsou povoleny, včetně dvojitých uvozovek (&quot;) a procent (&#37;).";
+
+/**
+ * ------------------------------------------------------------------------
+ * Version 2.6.1 Additions
+ * ------------------------------------------------------------------------
+ */
+
+$evaluation_info_104 = "Ne všichni porotci označili tuto práci jako postupující do kola Mini-BOS. Ověřte si to a vyberte Ano nebo Ne výše.";
+$evaluation_info_105 = "Následující položky mají od rozhodčích nesprávné označení Mini-BOS:";
+
+$label_non_judging = "Zasedání, která se netýkají soudců";
+
+
+/**
+ * ------------------------------------------------------------------------
+ * Version 2.6.2 Additions
+ * ------------------------------------------------------------------------
+ */
+$label_mhp_number = "Číslo člena programu Master Homebrewer";
+$brewer_text_053 = "Program Master Homebrewer je nezisková organizace založená za účelem podpory amatérského vaření piva.";
+$best_brewer_text_015 = "Body za každé umístění se vypočítávají podle následujícího vzorce, který vychází z vzorce používaného v programu Master Homebrewer pro <a href='https://www.masterhomebrewerprogram.com/circuit-of-america' target='_blank'>Circuit of America</a>:";
+
+/**
+ * ------------------------------------------------------------------------
+ * Version 2.7.0 Additions
+ * ------------------------------------------------------------------------
+ */
+$label_abv = "Obsah alkoholu podle objemu (ABV)";
+$label_final_gravity = "Konečná gravitace";
+$label_juice_source = "Zdroj šťávy(y)";
+$label_select_all_apply = "Vyberte Vše, co Platí";
+$label_pouring = "Nalévání";
+$label_pouring_notes = "Poznámky k Nalévání";
+$label_rouse_yeast = "Probudit Kvasinky";
+$label_fast = "Rychle";
+$label_slow = "Pomalu";
+$label_normal = "Normálně";
+$label_brewing_partners = "Vaření Partneři";
+$label_entry_edit_deadline = "Upravit termín odevzdání";
+$brew_text_042 = "Prosím, uveďte obsah alkoholu podle objemu až do setiny místa.";
+$brew_text_043 = "Pouze čísla - desetinná místa jsou přijatelná až do setiny (např. 5.2, 12.84, atd.).";
+$brew_text_044 = "Prosím, uveďte koncovou konkrétní gravitaci až do tisíciny místa (např. 0.991, 1.000, 1.007, atd.).";
+$brew_text_045 = "Prosím, uveďte zdroje šťávy(y) - vyberte všechny, které platí.";
+$brew_text_046 = "Prosím, uveďte dvoupísmennou zkratku státu/provincie jakéhokoli dalšího zdroje(y) šťávy (např. VT, ME, CA, ON, atd.). Oddělte každou zkratku místa čárkou (,) nebo středníkem (;). Některé symboly nejsou povoleny, včetně uvozovek (&quot;) a procenta (&#37;).";
+$brew_text_047 = "Jak by měla být vaše položka nalévána pro sudí?";
+$brew_text_048 = "Má být probuzena nějaká kvasinka před naléváním?";
+$brew_text_049 = "Poskytněte další informace o tom, jak by měla být vaše položka nalévána nebo jiné související položky (např. možné vybublávání, atd.).";
+$brewer_text_055 = "Vyberte všechny vařící partnery, se kterými jste spojeni. To je proto, aby nebyly žádné střety zájmů při přiřazování sudích a pomocníků k hodnocení položek."; 
+$brewer_text_054 = "<strong>Pokud jméno některé osoby není uvedeno v rozbalovacím menu výše, zadejte jejich CELÉ jméno zde (např. John Doe, Wyatt Earp, Selina Kyle, atd.). Zadejte zde také jména jakýchkoli vařících týmů.</strong> Oddělte každé jméno týmu nebo osoby čárkou (,) nebo středníkem (;). Některé symboly nejsou povoleny, včetně uvozovek (&quot;) a procenta (&#37;).";
+
+$brew_text_050 = "Některé styly jsou zakázány, protože byl dosažen limit pro jejich odpovídající typ stylu (např. pivo, medovina, cider, atd.).";
+$entry_info_text_053 = "Limity příspěvků podle typu stylu:";
+$alert_text_093 = "Některé limity příspěvků dosaženy!";
+$alert_text_094 = "Pro";
+$label_limit = "Limit";
+$label_beer = "Pivo";
+$label_mead = "Medovina";
+$label_cider = "Cider";
+$label_mead_cider = "Medovina/Cider";
+$label_wine = "Víno";
+$label_rice_wine = "Rýžové víno";
+$label_spirits = "Destiláty";
+$label_kombucha = "Kombucha";
+$label_pulque = "Pulque";
+
+$form_required_fields_00 = "Nebyly vyplněny nebo vybrány všechny povinné pole.";
+$form_required_fields_01 = "Povinná pole, která nemají hodnoty, jsou výše označena jako <strong class=\"text-danger\">červená</strong>. Přejděte, prosím, nahoru podle potřeby.";
+$form_required_fields_02 = "Toto pole je povinné.";
+
+$entry_info_text_054 = "Záznamy podle typu stylu a souvisejících omezení:";
+
+$maintenance_text_002 = "Když je web v režimu údržby, mohou se přihlásit pouze správci nejvyšší úrovně.";
+
+$brew_text_054 = "Odkud pochází ovoce nebo džus z jablka/hrušky? Prosím, vyberte všechny možnosti, které odpovídají základní nápoji.";
+$label_packaging = "Obal";
+$label_bottle = "Láhev";
+$label_other_size = "Jiná Velikost";
+$label_can = "Konvice";
+$label_fruit_add_source = "Zdroj(e) Přídavku Ovoce";
+
+$label_yearly_volume = "Roční Objem";
+$label_gallons = "Galony";
+$label_barrels = "Sudy";
+$label_hectoliters = "Hektolitry";
+
+/**
  * ----------------------------------------------------------------------------------
  * END TRANSLATIONS
  * ----------------------------------------------------------------------------------
@@ -1927,12 +2057,5 @@ if (strpos($section, "step") === FALSE) $alert_text_070 = $alert_text_070; else 
 if (strpos($section, "step") === FALSE) $label_character_limit = $label_character_limit; else $label_character_limit = "";
 if (strpos($section, "step") === FALSE) $header_text_031 = $header_text_031; else $header_text_031 = "";
 if (strpos($section, "step") === FALSE) $beerxml_text_007 = $beerxml_text_007; else $beerxml_text_007 = "";
-
-/**
- * ----------------------------------------------------------------------------------
- * Admin Pages - Admin pages will be included in a future release
- * ----------------------------------------------------------------------------------
- */
-// if ($section == "admin") include (LANG.'en_admin.lang.php');
 
 ?>

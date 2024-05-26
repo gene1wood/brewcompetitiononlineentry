@@ -5,9 +5,15 @@
  *
  */
 
-// Turn off SEF for error pages
-if ($section >= 400) $sef = "false";
-else $sef = $sef;
+/*
+// Redirect if directly accessed
+if ((!isset($_SESSION['prefs'.$prefix_session])) || ((isset($_SESSION['prefs'.$prefix_session])) && (!isset($base_url)))) {
+    $redirect = "../../index.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
 
 $add_entry_link_show = FALSE;
 $show_entries = TRUE;
@@ -221,9 +227,11 @@ if (($logged_in) && ($admin_user) && ($go != "error_page")) { ?>
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">Sorting <span class="caret"></span></a>
                 <ul class="dropdown-menu navmenu-nav">
                     <li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=entries">Manually</a></li>
+                    <?php if ($_SESSION['userAdminObfuscate'] == 0) { ?>
                     <?php if (in_array($_SESSION['prefsEntryForm'],$barcode_qrcode_array)) { ?>
                     <li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=checkin">Entry Check-in Via Barcode Scanner</a></li>
                     <li><a class="hide-loader" href="<?php echo $base_url; ?>qr.php" target="_blank">Entry Check-in Via Mobile Devices <span class="fa fa-external-link"></span></a></li>
+                    <?php } ?>
                     <?php } ?>
                 </ul>
             </li>
@@ -239,22 +247,31 @@ if (($logged_in) && ($admin_user) && ($go != "error_page")) { ?>
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">Scoring <span class="caret"></span></a>
                 <ul class="dropdown-menu navmenu-nav">
                 	<li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=upload_scoresheets">Upload Scoresheets</a></li>
-                	<?php if ($_SESSION['prefsEval'] == 1) { ?><li><a href="<?php echo $base_url; ?>index.php?section=evaluation&amp;go=default&amp;filter=default&amp;view=admin">Manage Entry Evaluations</a></li><?php } ?>
+                <?php if ($_SESSION['userAdminObfuscate'] == 0) { ?>
+                	<?php if ($_SESSION['prefsEval'] == 1) { ?><li><a href="<?php echo $base_url; ?>index.php?section=evaluation&amp;go=default&amp;filter=default&amp;view=admin">Manage Entry Evaluations</a></li>
+                	<?php } ?>
                     <li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_scores">Manage Scores</a></li>
                     <li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_scores_bos">Manage BOS Entries and Places</a></li>
+                <?php } ?>
                 </ul>
             </li>
             <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">Reports <span class="caret"></span></a>
                 <ul class="dropdown-menu navmenu-nav">
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=table-cards&amp;go=judging_tables&amp;id=default">Table Cards</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=pullsheets&amp;go=judging_tables&amp;view=entry&amp;id=default">Pullsheets - Entry Numbers</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=pullsheets&amp;go=judging_tables&amp;id=default">Pullsheets - Judging Numbers</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=pullsheets&amp;go=judging_scores_bos">BOS Pullsheets</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=bos-mat">BOS Cup Mats - Judging Numbers</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=bos-mat&amp;filter=entry">BOS Cup Mats - Entry Numbers</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=results&amp;go=judging_scores&amp;action=print&amp;filter=scores&amp;view=winners">Winners with Scores</a></li>
-                    <li><a id="modal_window_link" class="hide-loader" href="<?php echo $base_url; ?>output/print.output.php?section=results&amp;go=judging_scores&amp;action=print&amp;filter=none&amp;view=winners">Winners without Scores</a></li>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=table-cards&amp;go=judging_tables&amp;id=default">Table Cards</a></li>
+                <?php if ($_SESSION['userAdminObfuscate'] == 0) { ?>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=pullsheets&amp;go=judging_tables&amp;view=entry&amp;id=default">Pullsheets - Entry Numbers</a></li>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=pullsheets&amp;go=judging_tables&amp;id=default">Pullsheets - Judging Numbers</a></li>
+                    <?php if ($judging_started) { ?>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=pullsheets&amp;go=judging_scores_bos">BOS Pullsheets</a></li>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=bos-mat">BOS Cup Mats - Judging Numbers</a></li>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=bos-mat&amp;filter=entry">BOS Cup Mats - Entry Numbers</a></li>
+                	<?php } ?>
+                <?php } ?>
+                <?php if ($judging_started) { ?>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=results&amp;go=judging_scores&amp;action=print&amp;filter=scores&amp;view=winners">Winners with Scores</a></li>
+                    <li><a data-fancybox data-type="iframe" class="modal-window-link hide-loader" href="<?php echo $base_url; ?>includes/output.inc.php?section=results&amp;go=judging_scores&amp;action=print&amp;filter=none&amp;view=winners">Winners without Scores</a></li>
+                <?php } ?>
                 </ul>
             </li>
 			<?php if ($_SESSION['userLevel'] == "0") { ?>
@@ -294,7 +311,7 @@ $(document).ready(function(){
 	});
 });
 </script>
-<!-- Login Form Modal -->
+<!-- Login Form Modal logincheck.inc.php?section=login -->
 <?php if ((!$logged_in) && (($section != "login") || (($section == "login") && ($go != "default")))) { ?>
 <!-- Modal -->
 <div class="modal fade" id="loginModal" tabindex="-1" role="dialog" aria-labelledby="loginModalLabel">
@@ -305,14 +322,14 @@ $(document).ready(function(){
 				<h4 class="modal-title" id="loginModalLabel"><?php echo $label_log_in; ?></h4>
 			</div>
 			<div class="modal-body">
-				<form class="form-horizontal" data-toggle="validator" role="form" action="<?php echo $base_url; ?>includes/logincheck.inc.php?section=login" method="POST" name="form1" id="form1">
+				<form class="form-horizontal" data-toggle="validator" role="form" action="<?php echo $base_url; ?>includes/process.inc.php?section=login&action=login" method="POST" name="form1" id="form1">
 					<div class="form-group">
 						<div class="col-md-12">
 							<div class="input-group has-warning">
 								<span class="input-group-addon" id="login-addon1"><span class="fa fa-envelope"></span></span>
 								<!-- Input Here -->
 								<input id="loginUsername" class="form-control" name="loginUsername" type="email" required placeholder="<?php echo $label_email; ?>" data-error="<?php echo $login_text_018; ?>">
-								<span class="input-group-addon" id="login-addon2"><span class="fa fa-star"></span></span>
+								<span class="input-group-addon" id="login-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 							</div>
 							<span class="help-block with-errors"></span>
 						</div>
@@ -323,7 +340,7 @@ $(document).ready(function(){
 								<span class="input-group-addon" id="login-addon3"><span class="fa fa-key"></span></span>
 								<!-- Input Here -->
 								<input class="form-control" name="loginPassword" type="password" required placeholder="<?php echo $label_password; ?>" data-error="<?php echo $login_text_019; ?>">
-								<span class="input-group-addon" id="login-addon4"><span class="fa fa-star"></span></span>
+								<span class="input-group-addon" id="login-addon4" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 							</div>
 							<span class="help-block with-errors"></span>
 						</div>
@@ -424,12 +441,14 @@ $(document).ready(function(){
                         <?php } ?>
                     <?php } ?>
                     <li role="separator" class="divider"></li>
-                    <li><a href="<?php echo $base_url; ?>includes/logout.inc.php"><?php echo $label_log_out; ?></a></li>
+                    <li><a href="<?php echo $base_url; ?>includes/process.inc.php?section=logout&amp;action=logout"><?php echo $label_log_out; ?></a></li>
+                    <?php if ((!in_array($go,$datetime_load)) || ($go == "default")) { ?>
                     <li class="dropdown-header"><small><?php echo $label_auto_log_out; ?> <span id="session-end"></span></small></li>
+                	<?php } ?>
                 </ul>
             </li>
             <li id="user-menu-disable"><a href="<?php echo $link_list; ?>" tabindex="-1"><?php echo $label_my_account; ?></a></li>
-            <li id="logout-disable"><a href="<?php echo $base_url; ?>includes/logout.inc.php"><?php echo $label_log_out; ?></a></li>  
+            <li id="logout-disable"><a href="<?php echo $base_url; ?>includes/process.inc.php?section=logout&action=logout"><?php echo $label_log_out; ?></a></li>  
             <?php if ($admin_user) { ?>
             <li id="admin-enable" id="admin-arrow"><a href="<?php if ($go == "error_page") echo $base_url."index.php?section=admin"; else echo "#"; ?>" class="admin-offcanvas" data-toggle="offcanvas" data-target=".navmenu" data-canvas="body"><i class="fa fa-chevron-circle-left"></i> <?php echo $label_admin_short; ?></a></li>
             <li id="admin-disable"><a href="<?php echo $base_url."index.php?section=admin"; ?>"><?php echo $label_admin_short; ?></a></li>
@@ -438,7 +457,7 @@ $(document).ready(function(){
             <li id="login-modal-enable" <?php if ($section == "login") echo $active_class; ?>><a href="#" role="button" data-toggle="modal" data-target="#loginModal"><?php echo $label_log_in; ?></a></li>
             <li id="login-modal-disable"><a href="<?php echo $base_url; ?>index.php?section=login"><?php echo $label_log_in; ?></a></li>
             <?php } ?>
-            <li class="small visible-xs"><a href="https://brewcompetition.com" target="_blank">v <?php echo $current_version_display; ?></a></li>
+            <li class="small visible-xs"><a href="https://brewingcompetitions.com" target="_blank">v <?php echo $current_version_display; ?></a></li>
             </ul>
 
           </div>

@@ -8,6 +8,14 @@
  *
  */
 
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (strpos($section, "step") === FALSE) && ($_SESSION['userLevel'] > 0))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+
 // Set Vars
 $output_datatables_head = "";
 $output_datatables_body = "";
@@ -263,23 +271,47 @@ if ($section != "step5") {
 				}
 
 				if (($filter == "judges") || ($filter == "stewards") || ($filter == "staff")) {
-					
+				    
+				    // Get Judging Sessions
+				    $query_judging_loc3 = sprintf("SELECT id, judgingLocName, judgingLocType FROM %s", $prefix."judging_locations");
+				    if ($filter == "staff") $query_judging_loc3 .= " WHERE judgingLocType='2'";
+					$judging_loc3 = mysqli_query($connection,$query_judging_loc3) or die (mysqli_error($connection));
+					$row_judging_loc3 = mysqli_fetch_assoc($judging_loc3);
+	
+	                $j_sess_arr = array();
+
+	                if ($row_judging_loc3) {
+	                	do {
+	                	    $j_sess_arr[$row_judging_loc3['id']] = $row_judging_loc3['judgingLocName'];
+	                	    
+	                	} while ($row_judging_loc3 = mysqli_fetch_assoc($judging_loc3));
+	                }
+	                
 					if (($filter == "judges") || ($filter == "staff")) $exploder = $row_brewer['brewerJudgeLocation'];
 					if ($filter == "stewards") $exploder = $row_brewer['brewerStewardLocation'];
 					$a = explode(",",$exploder);
 					$output = "";
 					
 					if (!empty($exploder)) {
-						
+
 						sort($a);
 						$c = array();
+
+						$none_selected = 0;
 						
 						foreach ($a as $value) {
+							
 							if (!empty($value)) {
-								$b = substr($value, 2);
-								if ($filter == "staff") $c[] = judging_location_avail($b,$value,1);
-								else $c[] = judging_location_avail($b,$value);
+								
+								$b = explode("-",$value);
+								
+								if (($b[0] == "Y") && (isset($j_sess_arr[$b[1]]))) {
+								    $c[] = $j_sess_arr[$b[1]]."<br>";
+									$none_selected += 1;
+								}
+								
 							}
+							
 						}
 					
 						if (!empty($c)) {
@@ -292,13 +324,14 @@ if ($section != "step5") {
 							$output = rtrim($output,"<br>");
 						}
 
-					}					
-						
-					if (empty($output)) {
-						if ($filter == "staff") $output_location = "None specified.";
-						else $output_location .= "<span class=\"fa fa-lg fa-ban text-danger\"></span> <a href=\"".$base_url."index.php?section=brewer&amp;go=admin&amp;action=edit&amp;filter=".$row_brewer['uid']."&amp;id=".$row_brewer['uid']."\" data-toggle=\"tooltip\" title=\"Enter ".$row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']."&rsquo;s location preferences\">None specified</a>.";
+					
 					}
-					else $output_location = $output;
+						
+					if ($none_selected == 0) {
+						if ($filter != "staff") $output .= "<span class=\"fa fa-sm fa-ban text-danger\"></span> <a href=\"".$base_url."index.php?section=brewer&amp;go=admin&amp;action=edit&amp;filter=".$row_brewer['uid']."&amp;id=".$row_brewer['uid']."\" data-toggle=\"tooltip\" title=\"Enter ".$row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']."&rsquo;s location preferences\">None specified</a>.";
+					}
+					
+					$output_location = $output;
 
 				}
 
@@ -409,6 +442,8 @@ if ((($action == "add") || ($action == "edit")) || ($section == "step5")) {
 // Display HTML/JS elements and compiled PHP elements
 ?>
 <?php if (!empty($form_submit_url)) echo $form_submit_url; ?>
+
+<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
 <?php if ($section != "step5") { ?><p class="lead"><?php echo $_SESSION['contestName'].$subtitle; ?></p><?php } ?>
 <?php if (($filter == "default") && ($msg == "9"))  {
 	if ($section == "step5") $judge_loc_url_yes .= "setup.php?section=step5";
@@ -739,7 +774,7 @@ if (($output_add_edit) && ($msg != 9)) {
 		<div class="input-group has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="judgingLocName" name="judgingLocName" type="text" size="10" maxlength="255" value="<?php if ($action == "edit") echo $row_judging['judgingLocName']; ?>" placeholder="" autofocus required>
-			<span class="input-group-addon" id="judgingTime2"><span class="fa fa-star"></span></span>
+			<span class="input-group-addon" id="judgingTime2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<span class="help-block">Provide the name of the judging location.</span>
 	</div>
@@ -751,15 +786,16 @@ if (($output_add_edit) && ($msg != 9)) {
         <div class="radio">
             <!-- Input Here -->
             <label>
-                <input type="radio" name="judgingLocType" value="0" id="judgingLocType_0"  <?php if (($section == "step5") || ($action == "add")) echo "CHECKED"; if ((isset($row_judging['judgingLocType'])) && ($section != "step5") && ($row_judging['judgingLocType'] == "0")) echo "CHECKED";  ?> /> Traditional <small>(typically a single day in a central location)</small>
+                <input type="radio" name="judgingLocType" value="0" id="judgingLocType_0"  <?php if (($section == "step5") || ($action == "add")) echo "CHECKED"; if ((isset($row_judging['judgingLocType'])) && ($section != "step5") && ($row_judging['judgingLocType'] == "0")) echo "CHECKED";  ?> required /> Traditional <small>(typically a single day in a central location)</small>
             </label>
         </div>
         <div class="radio">
             <label>
-                <input type="radio" name="judgingLocType" value="1" id="judgingLocType_1" <?php if ((isset($row_judging['judgingLocType'])) && ($section != "step5") && ($row_judging['judgingLocType'] == "1")) echo "CHECKED"; ?>/> Distributed <small>(multi-day and/or multi-location)</small>
+                <input type="radio" name="judgingLocType" value="1" id="judgingLocType_1" <?php if ((isset($row_judging['judgingLocType'])) && ($section != "step5") && ($row_judging['judgingLocType'] == "1")) echo "CHECKED"; ?> required /> Distributed <small>(multi-day and/or multi-location)</small>
             </label>
         </div>
-        <span class="help-block">Indicate whether judge teams in this session will be evaluating entries at a single, designated location, typically collectively, or over a series of days in various locations. For example, choose <em>Distributed</em> if judges will be evaluating entries virtually - synchronously or asynchronously - or if locations will be ad-hoc, such as in a judge team member home.</span>
+        <span class="help-block">Indicate whether judge teams in this session will be evaluating entries at a single, designated location, typically collectively, or over a series of days in various locations. For example, choose <em>Distributed</em> if judges will be evaluating entries virtually - synchronously or asynchronously - or if locations will be ad-hoc, such as in a judge team member's home.</span>
+    	<span class="help-block">Traditional sessions only require a start time. Distributed sessions require a start AND end time.</span>
     </div>
 </div><!-- ./Form Group -->
 
@@ -769,7 +805,7 @@ if (($output_add_edit) && ($msg != 9)) {
 		<div class="input-group date has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="judgingDate" name="judgingDate" type="text" value="<?php if ($action == "edit") echo $judging_date; ?>" placeholder="<?php if (strpos($section, "step") === FALSE) echo $current_date." ".$current_time; ?>" required>
-			<span class="input-group-addon"><span class="fa fa-star"></span></span>
+			<span class="input-group-addon" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<span class="help-block">Provide an start date and time for the session.</span>
 	</div>
@@ -781,7 +817,7 @@ if (($output_add_edit) && ($msg != 9)) {
 		<div class="input-group date has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="judgingDateEnd" name="judgingDateEnd" type="text" value="<?php if ($action == "edit") echo $judging_end_date; ?>" placeholder="<?php if (strpos($section, "step") === FALSE) echo $current_date." ".$current_time; ?>">
-			<span class="input-group-addon"><span class="fa fa-star"></span></span>
+			<span class="input-group-addon" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<span class="help-block">For a distributed session, it is required that you provide an end date and time that will serve as a deadline for judges to submit their evaluations.</span>
 	</div>
@@ -793,7 +829,7 @@ if (($output_add_edit) && ($msg != 9)) {
 		<div class="input-group has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="judgingLocation" name="judgingLocation" type="text" size="10" maxlength="255" value="<?php if ($action == "edit") echo $row_judging['judgingLocation']; ?>" placeholder="" required>
-			<span class="input-group-addon"><span class="fa fa-star"></span></span>
+			<span class="input-group-addon" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
         <span id="helpBlockLocation1" class="help-block">Provide the street address, city, and zip/postal code where the session will take place.</span>
         <span id="helpBlockLocation2" class="help-block">Inform judges how they will receive their entries to evaluate (e.g., a designated pick-up location with address, shipped directly, etc.). 255 character maximum.</span>
@@ -806,7 +842,7 @@ if (($output_add_edit) && ($msg != 9)) {
 		<div class="input-group has-warning">
 			<!-- Input Here -->
 			<input class="form-control" id="judgingRounds" name="judgingRounds" type="number" size="10" maxlength="255" value="<?php if ($action == "edit") echo $row_judging['judgingRounds']; ?>" placeholder="" required>
-        	<span class="input-group-addon"><span class="fa fa-star"></span></span>
+        	<span class="input-group-addon" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
         </div>
         <span class="help-block">Provide the number of judging rounds anticipated for this session (see the <a class="hide-loader" href="https://www.bjcp.org/rules.php" target="_blank">BJCP's definition of a session</a> in their rules).</span>
 	</div>

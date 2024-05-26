@@ -1,7 +1,12 @@
 <?php
-require('../paths.php');
-require(CONFIG.'bootstrap.php');
-require(LIB.'output.lib.php');
+
+// Redirect if directly accessed without authenticated session
+if (!isset($_SESSION['loginUsername'])) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
 
 // Set up vars
 $page_info0 = "";
@@ -96,7 +101,7 @@ if (isset($_SESSION['loginUsername'])) {
             // Generate Barcode
             $barcode = sprintf("%06s",$row_log['id']);
 
-            $barcode_link = "http://www.brewcompetition.com/includes/barcode/html/image.php?filetype=PNG&dpi=300&scale=1&rotation=0&font_family=Arial.ttf&font_size=8&text=".$barcode."&thickness=20&code=BCGcode39";
+            $barcode_link = "https://admin.brewingcompetitions.com/includes/barcode/html/image.php?filetype=PNG&dpi=300&scale=1&rotation=0&font_family=Arial.ttf&font_size=8&text=".$barcode."&thickness=20&code=BCGcode39";
 
             // Generate QR Code
             require_once (CLASSES.'qr_code/qrClass.php');
@@ -105,7 +110,7 @@ if (isset($_SESSION['loginUsername'])) {
             $qrcode_url = $base_url."qr.php?id=".$row_log['id'];
             $qrcode_url = urlencode($qrcode_url);
 
-            $qr->qRCreate($qrcode_url,"85x85","UTF-8");
+            $qr->qRCreate($qrcode_url,"75x75","UTF-8");
             $qrcode_link = $qr->url;
 
             $entry_name = html_entity_decode($row_log['brewName'],ENT_QUOTES|ENT_XML1,"UTF-8");
@@ -141,7 +146,10 @@ if (isset($_SESSION['loginUsername'])) {
                 if (!empty($row_log['brewMead3'])) $brewInfo .= $row_log['brewMead3'];
               }
               
-              if (!empty($brewInfo)) $page_info1 .= "<strong>".$label_required_info.":</strong> <span class=\"break-long\">".$brewInfo."</span>";
+              if (!empty($brewInfo)) {
+                if (($_SESSION['prefsStyleSet'] == "BJCP2021") && ($row_log['brewCategorySort'] == "02") && ($row_log['brewSubCategory'] == "A")) $page_info1 .= "<strong>".$label_regional_variation.":</strong> <span class=\"break-long\">".$brewInfo."</span>";
+                else $page_info1 .= "<strong>".$label_required_info.":</strong> <span class=\"break-long\">".$brewInfo."</span>";
+              }
             
             }
               
@@ -149,8 +157,13 @@ if (isset($_SESSION['loginUsername'])) {
 
             if (!$anon) {
               $page_info1 .= "<small>";
-              $page_info1 .= "<p>".$brewerFirstName." ".$brewerLastName."<br>";
-              // $page_info1 .= $brewerAddress."<br>".$brewerCity.", ".$brewerState." ".$brewerZip." "."<br>";
+              $page_info1 .= "<p>";
+              if ($_SESSION['prefsProEdition'] == 1) {
+                $page_info1 .= $row_brewer['brewerBreweryName']."<br>";
+                $page_info1 .= $label_contact.": ".$brewerFirstName." ".$brewerLastName."<br>";
+              }
+              else $page_info1 .= $brewerFirstName." ".$brewerLastName."<br>";
+              //$page_info1 .= $brewerAddress."<br>".$brewerCity.", ".$brewerState." ".$brewerZip." "."<br>";
               $page_info1 .= $brewerEmail."<br>";
               $page_info1 .= $phone;
               $page_info1 .= "</p>";
@@ -163,7 +176,7 @@ if (isset($_SESSION['loginUsername'])) {
               $page_info1 .= "</div>";
               $page_info1 .= "<div align=\"center\">";
             }
-            $page_info1 .= "<img src=\"".$qrcode_link."\">";
+            $page_info1 .= "&nbsp;&nbsp;<img src=\"".$qrcode_link."\">";
             $page_info1 .= "</div>";
             if (!$anon) $page_info1 .= "<div align=\"center\" class=\"box\">".$bottle_labels_006."</div>";
 
@@ -230,7 +243,7 @@ else {
     <!-- Load Font Awesome -->
     <!-- Homepage URL: https://fortawesome.github.io/Font-Awesome -->
     <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
-    <link rel="stylesheet" href="../css/templates.min.css">
+    <link rel="stylesheet" href="<?php echo $css_url."templates.min.css"; ?>">
     <style>
 
     body {

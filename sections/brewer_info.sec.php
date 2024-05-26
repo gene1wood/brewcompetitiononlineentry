@@ -1,3 +1,17 @@
+<?php
+
+/*
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && (!isset($base_url)))) {
+    $redirect = "../../403.php";
+    $redirect_go_to = sprintf("Location: %s", $redirect);
+    header($redirect_go_to);
+    exit();
+}
+*/
+
+?>
+
 <script type="text/javascript" language="javascript">
 	 $(document).ready(function() {
 		$('#sortable_judge').dataTable( {
@@ -73,48 +87,6 @@
  *              judging/stewarding information
  *
  */
-
-
-// For Bootsrap conversion use the Horizontal Description class - http://getbootstrap.com/css/#horizontal-description
-
-
-/* ---------------- USER Pages Rebuild Info ---------------------
-
-Beginning with the 1.3.0 release, an effort was begun to separate the programming
-layer from the presentation layer for all scripts with this header.
-
-All Public pages have certain variables in common that build the page:
-
-	$primary_page_info = any information related to the page
-	$primary_links = top of page links
-	$secondary_links = sublinks
-
-	$header1_X = an <h2> header on the page
-	$header2_X = an <h3> subheader on the page
-
-	$page_infoX = the bulk of the information on the page.
-
-	$labelX = the various labels in a table or on a form
-	$table_headX = all table headers (column names)
-	$table_bodyX = table body info
-	$messageX = various messages to display
-
-	$print_page_link = "<p><span class='icon'><img src='".$base_url."images/printer.png' border='0' alt='Print' title='Print' /></span><a id='modal_window_link' class='data' href='".$base_url."output/print.php?section=".$section."&amp;action=print' title='Print'>Print This Page</a></p>";
-
-Declare all variables empty at the top of the script. Add on later...
-	$primary_page_info = "";
-	$header1_1 = "";
-	$page_info1 = "";
-	$header1_2 = "";
-	$page_info2 = "";
-
-	$table_head1 = "";
-	$account_display = "";
-
-	etc., etc., etc.
-
- * ---------------- END Rebuild Info --------------------- */
-
 
 include_once (DB.'judging_locations.db.php');
 
@@ -216,7 +188,7 @@ $name .= $_SESSION['brewerFirstName']." ".$_SESSION['brewerLastName'];
 $email .= $_SESSION['user_name'];
 if (!empty($_SESSION['brewerAddress'])) $address = $_SESSION['brewerAddress']; else $address = $label_none_entered;
 if (!empty($_SESSION['brewerCity'])) $city = $_SESSION['brewerCity']; else $city = $label_none_entered;
-if (!empty($_SESSION['brewerState'])) $state = $_SESSION['brewerState']; else $state = $label_none_entered;
+if (!empty($_SESSION['brewerState'])) $state_province = $_SESSION['brewerState']; else $state_province = $label_none_entered;
 if (!empty($_SESSION['brewerZip'])) $zip = $_SESSION['brewerZip']; else $zip = $label_none_entered;
 if (!empty($_SESSION['brewerCountry'])) $country = $_SESSION['brewerCountry']; else $country = $label_none_entered;
 if ($_SESSION['brewerCountry'] == "United States") $us_phone = TRUE; else $us_phone = FALSE;
@@ -230,10 +202,12 @@ if (!empty($_SESSION['brewerPhone2'])) {
 }
 if (!empty($_SESSION['brewerClubs'])) $club = $_SESSION['brewerClubs']; else $club = $label_none_entered;
 $discount .= $label_yes. " (".$currency_symbol.$_SESSION['contestEntryFeePasswordNum']." ".$brewer_info_004.")";
-if (!empty($_SESSION['brewerAHA'])) {
-	if ($_SESSION['brewerAHA'] < "999999994") $aha_number .= sprintf("%09s",$_SESSION['brewerAHA']);
-	elseif ($_SESSION['brewerAHA'] >= "999999994") $aha_number .= "Pending";
-} else $aha_number .= $label_none_entered;
+
+if (!empty($_SESSION['brewerAHA'])) $aha_number .= $_SESSION['brewerAHA'];
+else $aha_number .= $label_none_entered;
+
+if (!empty($_SESSION['brewerMHP'])) $mhp_number = $_SESSION['brewerMHP'];
+else $mhp_number = $label_none_entered;
 
 $pro_am = yes_no($_SESSION['brewerProAm'],$base_url,2);
 
@@ -371,10 +345,29 @@ if (($_SESSION['prefsProEdition'] == 1) && (!$show_judge_steward_fields)) {
 	$account_display .= "<div class=\"".$display_right_cols."\">".$_SESSION['brewerBreweryName']."</div>";
 	$account_display .= "</div>";
 
-	$account_display .= "<div class=\"row bcoem-account-info\">";
-	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_organization.$label_ttb);
-	$account_display .= "<div class=\"".$display_right_cols."\">".$_SESSION['brewerBreweryTTB']."</div>";
-	$account_display .= "</div>";
+	$brewerBreweryTTB = "";
+	$brewerBreweryProd = "";
+
+	if (!empty($_SESSION['brewerBreweryInfo'])) {
+		$ttb = json_decode($_SESSION['brewerBreweryInfo'],true);
+		if (isset($ttb['TTB'])) $brewerBreweryTTB = $ttb['TTB'];
+		if (isset($ttb['Production'])) $brewerBreweryProd = $ttb['Production'];
+	}
+
+	if (!empty($brewerBreweryTTB)) {
+		$account_display .= "<div class=\"row bcoem-account-info\">";
+		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_organization.$label_ttb);
+		$account_display .= "<div class=\"".$display_right_cols."\">".$brewerBreweryTTB."</div>";
+		$account_display .= "</div>";
+	}
+		
+	if (!empty($brewerBreweryProd)) {
+		$account_display .= "<div class=\"row bcoem-account-info\">";
+		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_organization.$label_yearly_volume);
+		$account_display .= "<div class=\"".$display_right_cols."\">".$brewerBreweryProd."</div>";
+		$account_display .= "</div>";
+	}
+		
 }
 
 $account_display .= "<div class=\"row bcoem-account-info\">";
@@ -389,7 +382,7 @@ $account_display .= "</div>";
 
 $account_display .= "<div class=\"row bcoem-account-info\">";
 $account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_organization.$label_state_province);
-$account_display .= "<div class=\"".$display_right_cols."\">".$state."</div>";
+$account_display .= "<div class=\"".$display_right_cols."\">".$state_province."</div>";
 $account_display .= "</div>";
 
 $account_display .= "<div class=\"row bcoem-account-info\">";
@@ -402,54 +395,48 @@ $account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</s
 $account_display .= "<div class=\"".$display_right_cols."\">".$country."</div>";
 $account_display .= "</div>";
 
-if (($_SESSION['prefsProEdition'] == 1) && (!$show_judge_steward_fields)) $account_display .= "<hr>";
+if (($_SESSION['prefsProEdition'] == 1) && (!$show_judge_steward_fields) && (empty($_SESSION['brewerBreweryInfo']))) $account_display .= "<hr>";
 
-/*
-$account_display .= "<div class=\"row bcoem-account-info\">";
-$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_security_question);
-$account_display .= "<div class=\"".$display_right_cols."\">".$_SESSION['userQuestion']."</div>";
-$account_display .= "</div>";
+if ($_SESSION['prefsProEdition'] == 0) {
 
-
-$account_display .= "<div class=\"row bcoem-account-info\">";
-$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_security_answer);
-$account_display .= "<div class=\"".$display_right_cols."\">".$_SESSION['userQuestionAnswer']."</div>";
-$account_display .= "</div>";
-*/
-
-if ($show_judge_steward_fields) {
 	$account_display .= "<div class=\"row bcoem-account-info\">";
-	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_aha_number);
-	$account_display .= sprintf("<div class=\"".$display_right_cols."\"><a class=\"hide-loader\" href=\"http://www.homebrewersassociation.org/membership/join-or-renew/\" target=\"_blank\" data-toggle=\"tooltip\" title=\"%s\" data-placement=\"right\">".$aha_number."</a></div>",$brewer_info_005);
+	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong> <span style=\"color: #F2D06C; background-color: #000;\" class=\"badge\">MHP</span></div>",$label_mhp_number);
+	$account_display .= sprintf("<div class=\"".$display_right_cols."\"><a class=\"hide-loader\" href=\"https://www.masterhomebrewerprogram.com\" target=\"_blank\" data-toggle=\"tooltip\" title=\"%s\" data-placement=\"right\">".$mhp_number."</a></div>",$brewer_text_053);
 	$account_display .= "</div>";
-	if (($_SESSION['prefsProEdition'] == 0) && ($_SESSION['brewerCountry'] == "United States")) {
+
+	if ($show_judge_steward_fields) {
 		$account_display .= "<div class=\"row bcoem-account-info\">";
-		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_pro_am);
-		$account_display .= sprintf("<div class=\"".$display_right_cols."\">%s</div>",$pro_am);
+		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_aha_number);
+		$account_display .= sprintf("<div class=\"".$display_right_cols."\"><a class=\"hide-loader\" href=\"http://www.homebrewersassociation.org/membership/join-or-renew/\" target=\"_blank\" data-toggle=\"tooltip\" title=\"%s\" data-placement=\"right\">".$aha_number."</a></div>",$brewer_info_005);
 		$account_display .= "</div>";
-	}
-}
-
-if (($_SESSION['prefsProEdition'] == 1) && (!$show_judge_steward_fields)) $account_display .= "<hr>";
-
-$account_display .= "<div class=\"row bcoem-account-info\">";
-$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_drop_off);
-$account_display .= "<div class=\"".$display_right_cols."\">".dropoff_location($_SESSION['brewerDropOff']);
-if ($_SESSION['brewerDropOff'] == 0) $account_display .= sprintf("<br><a id=\"modal_window_link\" class=\"hide-loader\" data-toggle=\"tooltip\" title=\"%s\" href =\"".$base_url."output/print.output.php?section=shipping-label\">%s</a>",$brewer_info_006,$brewer_info_007);
-$account_display .= "</div>";
-$account_display .= "</div>";
-
-$account_display .= "<div class=\"row bcoem-account-info\">";
-$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_club);
-$account_display .=  "<div class=\"".$display_right_cols."\">".$club."</div>";
-$account_display .= "</div>";
-
-if ($entry_discount) {
+		if (($_SESSION['prefsProEdition'] == 0) && ($_SESSION['brewerCountry'] == "United States")) {
+			$account_display .= "<div class=\"row bcoem-account-info\">";
+			$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_pro_am);
+			$account_display .= sprintf("<div class=\"".$display_right_cols."\">%s</div>",$pro_am);
+			$account_display .= "</div>";
+		}
+	} 
 
 	$account_display .= "<div class=\"row bcoem-account-info\">";
-	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_discount);
-	$account_display .= "<div class=\"".$display_right_cols."\">".$discount."</div>";
+	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_drop_off);
+	$account_display .= "<div class=\"".$display_right_cols."\">".dropoff_location($_SESSION['brewerDropOff']);
+	if ($_SESSION['brewerDropOff'] == 0) $account_display .= sprintf("<br><a data-fancybox data-type=\"iframe\" class=\"modal-window-link hide-loader\" data-toggle=\"tooltip\" title=\"%s\" href =\"".$base_url."includes/output.inc.php?section=shipping-label\">%s</a>",$brewer_info_006,$brewer_info_007);
 	$account_display .= "</div>";
+	$account_display .= "</div>";
+
+	$account_display .= "<div class=\"row bcoem-account-info\">";
+	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_club);
+	$account_display .=  "<div class=\"".$display_right_cols."\">".$club."</div>";
+	$account_display .= "</div>";
+
+	if ($entry_discount) {
+
+		$account_display .= "<div class=\"row bcoem-account-info\">";
+		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_discount);
+		$account_display .= "<div class=\"".$display_right_cols."\">".$discount."</div>";
+		$account_display .= "</div>";
+
+	}
 
 }
 
@@ -507,7 +494,7 @@ if ($show_judge_steward_fields) {
 		if ($_SESSION['prefsEval'] == 0) {
 			$account_display .= "<div class=\"row bcoem-account-info hidden-print\">";
 			$account_display .= "<div class=\"".$display_left_cols."\"><strong>&nbsp;</strong></div>";
-			$account_display .= sprintf("<div class=\"".$display_right_cols."\">%s <a class=\"hide-loader\" href=\"".$base_url."output/labels.output.php?section=admin&amp;go=participants&amp;action=judging_labels&amp;id=".$_SESSION['brewerID']."&amp;psort=5160\" data-toggle=\"tooltip\" title=\"Avery 5160\">%s</a> %s <a class=\"hide-loader\" href=\"".$base_url."output/labels.output.php?section=admin&amp;go=participants&amp;action=judging_labels&amp;id=".$_SESSION['brewerID']."&amp;psort=3422\" data-toggle=\"tooltip\" title=\"Avery 3422\">A4</a></div>",$brewer_info_012, $label_letter, $brewer_info_011);
+			$account_display .= sprintf("<div class=\"".$display_right_cols."\">%s <a class=\"hide-loader\" href=\"".$base_url."includes/output.inc.php?section=labels-judge&amp;go=participants&amp;action=judging_labels&amp;id=".$_SESSION['brewerID']."&amp;psort=5160\" data-toggle=\"tooltip\" title=\"Avery 5160\">%s</a> %s <a class=\"hide-loader\" href=\"".$base_url."includes/output.inc.php?section=labels-judge&amp;go=participants&amp;action=judging_labels&amp;id=".$_SESSION['brewerID']."&amp;psort=3422\" data-toggle=\"tooltip\" title=\"Avery 3422\">A4</a></div>",$brewer_info_012, $label_letter, $brewer_info_011);
 			$account_display .= "</div>";
 		}
 
@@ -532,6 +519,50 @@ if ($show_judge_steward_fields) {
 		if ($_SESSION['brewerJudgeRank'] != "") $account_display .= str_replace("<br />",", ",$display_rank); else $account_display .= "N/A";
 		$account_display .= "</div>";
 		$account_display .= "</div>";
+
+		if ($_SESSION['prefsProEdition'] == 1) $participant_orgs_label = $label_industry_affiliations;
+		else $participant_orgs_label = $label_brewing_partners;
+
+		$account_display .= "<div class=\"row bcoem-account-info\">";
+		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$participant_orgs_label);
+		$account_display .= "<div class=\"".$display_right_cols."\">";
+		
+		if (!empty($_SESSION['brewerAssignment'])) {
+
+			$affiliated_orgs = json_decode($_SESSION['brewerAssignment'],true);
+			$affiliations = array();
+
+			if (!empty($affiliated_orgs['affilliated'])) {
+			    foreach($affiliated_orgs['affilliated'] as $value) {
+			    	if (!empty($value)) {
+			    		$affiliations[] = $value;
+			    	}
+			    }
+			}
+			
+			if (!empty($affiliated_orgs['affilliatedOther'])) {
+			    foreach($affiliated_orgs['affilliatedOther'] as $value) {
+			        if (!empty($value)) {
+			    		$affiliations[] = $value;
+			    	}
+			    }
+			}
+
+			if (!empty($affiliations)) {
+				$affiliations = implode(", ",$affiliations);
+				$account_display .= $affiliations;
+			}
+
+			else {
+				$account_display .= $label_none;
+			}
+
+		}
+		
+		else $account_display .= $label_none;
+		$account_display .= "</div>";
+		$account_display .= "</div>";
+
 		$account_display .= "<div class=\"row bcoem-account-info\">";
 		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_judge_comps);
 		$account_display .= "<div class=\"".$display_right_cols."\">";
@@ -668,41 +699,45 @@ if ($show_judge_steward_fields) {
 
 }
 
-if ((($_SESSION['brewerStaff'] == "Y") && (!empty($staff_info))) || (($_SESSION['brewerSteward'] == "Y") && (!empty($steward_info))))  $account_display .= "<hr>";
-$account_display .= "<div class=\"row bcoem-account-info\">";
-$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_staff);
-$account_display .= "<div class=\"".$display_right_cols."\">";
-if (!empty($_SESSION['brewerStaff'])) {
-	if ($action == "print") $account_display .= yes_no($_SESSION['brewerStaff'],$base_url);
-	else $account_display .= yes_no($_SESSION['brewerStaff'],$base_url,2);
-}
-else $account_display .= $label_none_entered;
-$account_display .= "</div>";
-$account_display .= "</div>";
+if ((!isset($_SESSION['brewerBreweryInfo'])) || (empty($_SESSION['brewerBreweryInfo']))) {
 
-if ($_SESSION['brewerStaff'] == "Y") {
-	
-	if (!empty($staff_info)) {
+	if ((($_SESSION['brewerStaff'] == "Y") && (!empty($staff_info))) || (($_SESSION['brewerSteward'] == "Y") && (!empty($steward_info))))  $account_display .= "<hr>";
+	$account_display .= "<div class=\"row bcoem-account-info\">";
+	$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_staff);
+	$account_display .= "<div class=\"".$display_right_cols."\">";
+	if (!empty($_SESSION['brewerStaff'])) {
+		if ($action == "print") $account_display .= yes_no($_SESSION['brewerStaff'],$base_url);
+		else $account_display .= yes_no($_SESSION['brewerStaff'],$base_url,2);
+	}
+	else $account_display .= $label_none_entered;
+	$account_display .= "</div>";
+	$account_display .= "</div>";
 
-		$account_display .= "<div class=\"row bcoem-account-info\">";
-		$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_avail);
-		$account_display .= "<div class=\"".$display_right_cols."\">";
+	if ($_SESSION['brewerStaff'] == "Y") {
+		
+		if (!empty($staff_info)) {
 
-		$account_display .= "<table id=\"sortable_staff\" class=\"table table-condensed table-striped table-bordered table-responsive\">";
-		$account_display .= "<thead>";
-		$account_display .= "<tr>";
-		$account_display .= sprintf("<th width=\"14%%\">%s/%s</th>",$label_yes,$label_no);;
-		$account_display .= sprintf("<th width=\"43%%\">%s</th>",$label_session);
-		$account_display .= sprintf("<th width=\"43%%\">%s</th>",$label_date);
-		$account_display .= "</tr>";
-		$account_display .= "</thead>";
-		$account_display .= "<tbody>";
-		$account_display .= $staff_info;
-		$account_display .= "</tbody>";
-		$account_display .= "</table>";
+			$account_display .= "<div class=\"row bcoem-account-info\">";
+			$account_display .= sprintf("<div class=\"".$display_left_cols."\"><strong>%s</strong></div>",$label_avail);
+			$account_display .= "<div class=\"".$display_right_cols."\">";
 
-		$account_display .= "</div>";
-		$account_display .= "</div>";
+			$account_display .= "<table id=\"sortable_staff\" class=\"table table-condensed table-striped table-bordered table-responsive\">";
+			$account_display .= "<thead>";
+			$account_display .= "<tr>";
+			$account_display .= sprintf("<th width=\"14%%\">%s/%s</th>",$label_yes,$label_no);;
+			$account_display .= sprintf("<th width=\"43%%\">%s</th>",$label_session);
+			$account_display .= sprintf("<th width=\"43%%\">%s</th>",$label_date);
+			$account_display .= "</tr>";
+			$account_display .= "</thead>";
+			$account_display .= "<tbody>";
+			$account_display .= $staff_info;
+			$account_display .= "</tbody>";
+			$account_display .= "</table>";
+
+			$account_display .= "</div>";
+			$account_display .= "</div>";
+
+		}
 
 	}
 
