@@ -151,13 +151,14 @@ function build_form_action($base_url,$section,$go,$action,$filter,$id,$dbTable,$
 	return $return;
 }
 
-function build_public_url($section="default",$go="default",$action="default",$id="default",$sef,$base_url) {
+function build_public_url($section="default",$go="default",$action="default",$id="default",$sef,$base_url,$view="default") {
 	
 	if ($_SESSION['prefsSEF'] == 'Y') {
 		$url = $base_url."";
 		if ($section != "default") $url .= $section."/";
 		if ($go != "default") $url .= $go."/";
 		if ($action != "default") $url .= $action."/";
+		if ($view != "default") $url .= $view."/";
 		if ($id != "default") $url .= $id."/";
 		return rtrim($url,"/");
 	}
@@ -166,6 +167,7 @@ function build_public_url($section="default",$go="default",$action="default",$id
 		$url = $base_url."index.php?section=".$section;
 		if ($go != "default") $url .= "&amp;go=".$go;
 		if ($action != "default") $url .= "&amp;action=".$action;
+		if ($view != "default") $url .= "&amp;view=".$view;
 		if ($id != "default") $url .= "&amp;id=".$id;
 		return $url;
 	}
@@ -3000,7 +3002,7 @@ function data_integrity_check() {
 	}
 
 	$update_table = $prefix."bcoem_sys";
-	$data = array('data_check' => $db_conn->now());
+	$data = array('data_check' => date('Y-m-d H:i:s', time()));
 	$db_conn->where ('id', 1);
 	$result = $db_conn->update ($update_table, $data);
 	if (!$result) $errors += 1;
@@ -3093,8 +3095,7 @@ function table_exists($table_name) {
 	else return FALSE;
 }
 
-function judge_assignment($uid, $loc_id)
-{
+function judge_assignment($uid, $loc_id) {
 	// Get judge table assignments by locations
 	require(CONFIG.'config.php');
 	mysqli_select_db($connection,$database);
@@ -4543,6 +4544,10 @@ function eval_exits($eid="default",$method="default",$dbTable) {
 
 // See https://core.trac.wordpress.org/browser/tags/4.1/src/wp-includes/formatting.php
 function remove_accents($string) {
+
+	// Converts all accent characters to ASCII characters.
+	// If there are no accent characters, then the string given is just returned.
+
     if (!preg_match('/[\x80-\xff]/', $string)) return $string;
 
     $chars = array(
@@ -5173,5 +5178,48 @@ function scrub_filename($filename) {
 	$scrub_characters = array("&" => "", "?" => "", "=" => "", "%" => "", "\"" => "", "'" => "", "$" => "", "*" => "");
 	$filename = strtr($filename, $scrub_characters);
 	return $filename;
+}
+
+function clean_filename($filename) {
+
+	// Get the file extension
+	$file_extension = pathinfo($filename, PATHINFO_EXTENSION);
+
+	// Get the file name without the extension 
+	$file_name = pathinfo($filename, PATHINFO_FILENAME); 
+
+	// Call function in common.lib.php to convert accented characters to ASCII
+	$file_name = remove_accents($file_name);
+
+	// Call function in common.lib.php to remove characters like &, $, etc.
+	$file_name = scrub_filename($file_name);
+
+	// Replace spaces with dashes
+	$file_name = str_replace(' ', '-', $file_name);
+
+	// Replace underscores with dashes
+	$file_name = str_replace('_', '-', $file_name);
+
+	// Remove any remaining special characters
+	$file_name = preg_replace('/[^A-Za-z0-9\-\_]/', '', $file_name); 
+
+	// Strip any html or php tags
+	$file_name = strip_tags($file_name);
+
+	// Strip any slashes
+	$file_name = stripcslashes($file_name);
+	$file_name = stripslashes($file_name);
+
+	// Failsafe in case the remove_accents function missed something
+	$file_name = filter_var($file_name, FILTER_UNSAFE_RAW, FILTER_FLAG_ENCODE_LOW | FILTER_FLAG_ENCODE_HIGH);
+
+	// Replace two or more dashes together with a single dash
+	$file_name = preg_replace('/-+/', '-', $file_name); 
+
+	// Add extension back
+	$cleaned_file = $file_name.".".$file_extension;
+
+	return $cleaned_file;
+
 }
 ?>
