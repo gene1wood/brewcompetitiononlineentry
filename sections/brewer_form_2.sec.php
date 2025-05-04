@@ -18,11 +18,6 @@ if (($table_assignment) && ($go == "account") && (!$entrant_type_brewery)) { ?>
 
 <?php } 
 
-if ($_SESSION['prefsProEdition'] == 1) $participant_orgs_label = $label_industry_affiliations;
-else $participant_orgs_label = $label_brewing_partners;
-
-$show_partners_orgs = FALSE;
-
 if (((!$table_assignment) || ($go == "admin")) && (!$entrant_type_brewery)) { 
 
     if ((!empty($judge_location_avail)) && (((!$judge_limit) && ($go == "account")) || (($_SESSION['userLevel'] <= 1) && (($go == "admin") || ($go == "account"))))) { 
