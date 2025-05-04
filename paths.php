@@ -129,7 +129,9 @@ define('ENABLE_MARKDOWN', FALSE);
  * Default is FALSE.
  */
 
-define('ENABLE_MAILER', FALSE);
+// define('ENABLE_MAILER', FALSE);
+// Customized for BAM
+define('ENABLE_MAILER', TRUE);
 
 /**
  * Error Reporting
