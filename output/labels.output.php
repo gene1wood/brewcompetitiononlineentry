@@ -1,13 +1,5 @@
 <?php
-require('../paths.php');
-require(CONFIG.'bootstrap.php');
-require(CLASSES.'fpdf/pdf_label.php');
-require(CLASSES.'fpdf/FPDFPlus.php');
-include (DB.'output_labels.db.php');
 include (DB.'style_table_sequence.db.php');
-include (LIB.'output.lib.php');
-include (DB.'styles.db.php');
-include (INCLUDES.'scrubber.inc.php');
 
 // Redirect if directly accessed without authenticated session
 if (!isset($_SESSION['loginUsername'])) {
