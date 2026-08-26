@@ -49,7 +49,7 @@ if ($section != "step6") {
 
 <?php if ((($action == "add") || ($action == "edit")) || ($section == "step6")) { ?>
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php if ($section == "step6") echo "setup"; else echo $section; ?>&amp;action=<?php if ($section == "step6") echo "add"; else echo $action; ?>&amp;dbTable=<?php echo $drop_off_db_table; ?>&amp;go=<?php if ($go == "default") echo "setup"; else echo $go; if ($action == "edit") echo "&amp;id=".$id; ?>" name="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="bcoem-admin-element hidden-print">
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
 	<label for="dropLocationName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Name</label>
@@ -61,7 +61,7 @@ if ($section != "step6") {
 		</div>
         <span class="help-block with-errors"></span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
 	<label for="dropLocationPhone" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Phone</label>
@@ -73,35 +73,35 @@ if ($section != "step6") {
 		</div>
         <span class="help-block with-errors"></span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
 	<label for="dropLocation" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Address</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
 			<!-- Input Here -->
-			<input class="form-control" id="dropLocation" name="dropLocation" type="text" value="<?php if ($action == "edit") echo $row_dropoff['dropLocation']; ?>" data-error="The dropoff location's address is required" placeholder="" required>
+			<input class="form-control" id="dropLocation" name="dropLocation" type="text" value="<?php if ($action == "edit") echo $row_dropoff['dropLocation']; ?>" data-error="The dropoff location's address is required" placeholder="" maxlength="255" required>
 			<span class="input-group-addon" id="dropLocation-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
-		<span class="help-block with-errors">Provide the street address, city, and zip code.</span>
+		<span class="help-block with-errors">Provide the street address, city, and zip code. 255 character limit.</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="dropLocationWebsite" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Website</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<input class="form-control" id="dropLocationWebsite" name="dropLocationWebsite" type="url" value="<?php if ($action == "edit") echo $row_dropoff['dropLocationWebsite']; ?>" data-error="Make sure the web address is valid and includes http:// or https://" placeholder="http://www.yoursite.com" pattern="^(http(s?)\:\/\/)*[0-9a-zA-Z]([-.\w]*[0-9a-zA-Z])*(:(0-9)*)*(\/?)([a-zA-Z0-9\-\.\?\,\'\/\\\+&amp;%\$#_]*)?$">
 		<span class="help-block with-errors">Be sure to include the full website URL including the http:// or https://</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="dropLocationNotes" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Notes</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<input class="form-control" id="dropLocationWNotes" name="dropLocationNotes" type="text" value="<?php if ($action == "edit") echo $row_dropoff['dropLocationNotes']; ?>" placeholder="" >
-		<span id="helpBlock" class="help-block">Catch-all for items such as when entries will be picked up at the location, etc.</span>
+		<input class="form-control" id="dropLocationWNotes" name="dropLocationNotes" type="text" value="<?php if ($action == "edit") echo $row_dropoff['dropLocationNotes']; ?>" placeholder="" maxlength="255">
+		<span id="helpBlock" class="help-block">Catch-all for items such as when entries will be picked up at the location, etc. 255 character limit.</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
 </div>
 <div class="bcoem-admin-element hidden-print">

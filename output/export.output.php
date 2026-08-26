@@ -1,29 +1,4 @@
 <?php
-ini_set('display_errors', 0); // Change to 0 for prod; change to 1 for testing.
-ini_set('display_startup_errors', 0); // Change to 0 for prod; change to 1 for testing.
-error_reporting(0); // Change to error_reporting(0) for prod; change to E_ALL for testing.
-
-// Redirect if directly accessed without authenticated session
-if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && ($_SESSION['userLevel'] > 1))) {
-    
-    $authorized = FALSE;
-
-    // Do not redirect if its the HTML or PDF download of results
-    // Available publicly on the results page
-    if ($section == "export-results") {
-        if ((($go == "judging_scores_bos") || ($go == "judging_scores")) && (($view == "html") || ($view == "pdf"))) $authorized = TRUE;
-    }
-
-    if ($section == "export-personal-results") $authorized = TRUE;
-
-    if (!$authorized) {
-        $redirect = "../../403.php";
-        $redirect_go_to = sprintf("Location: %s", $redirect);
-        header($redirect_go_to);
-        exit();
-    }
-
-}
 
 /**
  * Module: export.output.php
@@ -66,6 +41,32 @@ if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername']))
  * Request from Hirendu Vaishnav (BJCP Assistant IT Director) to remove BOS 
  * info from BJCP XML output.
  */
+
+ini_set('display_errors', 0); // Change to 0 for prod; change to 1 for testing.
+ini_set('display_startup_errors', 0); // Change to 0 for prod; change to 1 for testing.
+error_reporting(0); // Change to error_reporting(0) for prod; change to E_ALL for testing.
+
+// Redirect if directly accessed without authenticated session
+if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername'])) && ($_SESSION['userLevel'] > 1))) {
+    
+    $authorized = FALSE;
+
+    // Do not redirect if its the HTML or PDF download of results
+    // Available publicly on the results page
+    if ($section == "export-results") {
+        if ((($go == "judging_scores_bos") || ($go == "judging_scores")) && (($view == "html") || ($view == "pdf"))) $authorized = TRUE;
+    }
+
+    if ($section == "export-personal-results") $authorized = TRUE;
+
+    if (!$authorized) {
+        $redirect = "../../403.php";
+        $redirect_go_to = sprintf("Location: %s", $redirect);
+        header($redirect_go_to);
+        exit();
+    }
+
+}
 
 // Run the integrity function. 
 // This will make sure that user ids line up with brewer uids, etc.
@@ -739,9 +740,7 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
                         $brewer_info = array();
                         $brewer_club = "";
 
-                        if (isset($row_sql['brewBrewerID'])) $brewer_info = explode("^", brewer_info($row_sql['brewBrewerID']));
-
-                        
+                        if (isset($row_sql['brewBrewerID'])) $brewer_info = explode("^", brewer_info($row_sql['brewBrewerID']));  
                         if (isset($row_sql['brewBrewerFirstName'])) $brewerFirstName = convert_to_entities($row_sql['brewBrewerFirstName']);
                         if (isset($row_sql['brewBrewerLastName'])) $brewerLastName = convert_to_entities($row_sql['brewBrewerLastName']);
                         if (isset($row_sql['brewName'])) $brewName = convert_to_entities($row_sql['brewName']);
@@ -889,18 +888,23 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
 
                         if (($go == "csv") && ($action == "required") && ($tb == "required")) {
 
-                            $a[] = array($entryNo,
-                                $judgingNo,
-                                convert_to_entities($row_sql['brewCategory']),
-                                convert_to_entities($row_sql['brewSubCategory']),
-                                convert_to_entities($row_sql['brewStyle']),
-                                $brewName,
-                                $brewInfo,
-                                $brewSpecifics,
-                                convert_to_entities($row_sql['brewMead1']),
-                                convert_to_entities($row_sql['brewMead2']),
-                                convert_to_entities($row_sql['brewMead3'])
-                            );
+                            if ((!empty($row_sql['brewInfo'])) || (!empty($row_sql['brewInfoOptional']))) {
+                                
+                                $a[] = array(
+                                    $entryNo,
+                                    $judgingNo,
+                                    convert_to_entities($row_sql['brewCategory']),
+                                    convert_to_entities($row_sql['brewSubCategory']),
+                                    convert_to_entities($row_sql['brewStyle']),
+                                    $brewInfo,
+                                    $brewInfoOptional,
+                                    $brewSpecifics,
+                                    convert_to_entities($row_sql['brewMead1']),
+                                    convert_to_entities($row_sql['brewMead2']),
+                                    convert_to_entities($row_sql['brewMead3'])
+                                );
+                            
+                            }
 
                         }
 
@@ -2405,53 +2409,51 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
             include (DB.'admin_common.db.php');
             include (DB.'output_staff_points.db.php');
 
-            // Get total amount of paid and received entries
-            $total_entries = total_paid_received("judging_scores",0);
-            //$total_entries = 750;
+            /**
+             * Figure out whether BOS Judge Points are awarded or not
+             * "BOS points may only be awarded if a competition has at 
+             * least 30 entries in at least five beer and/or three 
+             * mead/cider categories."
+             * 
+             * Need to get the total number of entries judged. Presumably,
+             * that number is the same as the total number of entries
+             * marked as received.
+             * 
+             * $total_entries_received is defined in constants.
+             * 
+             * @see staff_points.output.php for non XML output.
+             * 
+             */
 
-            $st_running_total = array();
-
-            // Figure out whether BOS Judge Points are awarded or not
-            // "BOS points may only be awarded if a competition has at least 30 entries in at least five beer and/or three mead/cider categories."
-            $beer_styles = array();
-            $mead_styles = array();
-            $cider_styles = array();
-
-            $beer_styles[] = array();
-            $mead_styles[] = array();
-            $cider_styles[] = array();
+            $bos_alert = "";
+            $st_running_total = 0;
+            $beer_styles_total = 0;
+            $mead_styles_total = 0;
+            $cider_styles_total = 0;
 
             do {
-
-                if (($row_styles2['brewStyleType'] == "Cider") || ($row_styles2['brewStyleType'] == "2")) {
-                    $beer_styles[] = 0;
-                    $mead_styles[] = 0;
-                    $cider_styles[] = 1;
-                }
-
-                elseif (($row_styles2['brewStyleType'] == "Mead") || ($row_styles2['brewStyleType'] == "3")) {
-                    $beer_styles[] = 0;
-                    $mead_styles[] = 1;
-                    $cider_styles[] = 0;
-                }
-
-                else  {
-                    $beer_styles[] = 1;
-                    $mead_styles[] = 0;
-                    $cider_styles[] = 0;
-                }
-
+                if (($row_styles2['brewStyleType'] == "Cider") || ($row_styles2['brewStyleType'] == "2")) $cider_styles_total++;
+                elseif (($row_styles2['brewStyleType'] == "Mead") || ($row_styles2['brewStyleType'] == "3")) $mead_styles_total++;
+                else $beer_styles_total++;
             } while ($row_styles2 = mysqli_fetch_assoc($styles2));
-
-            $beer_styles_total = array_sum($beer_styles);
-            $mead_styles_total = array_sum($mead_styles);
-            $cider_styles_total = array_sum($cider_styles);
 
             $mead_cider_total = $mead_styles_total + $cider_styles_total;
             $all_styles_total = $beer_styles_total + $mead_styles_total + $cider_styles_total;
 
-            if (($total_entries >= 30) && (($beer_styles_total >= 5) || ($mead_cider_total >= 3))) $bos_judge_points = 0.5;
-            else $bos_judge_points = 0.0;
+            $total_entries_scored = get_entry_count("scored");
+
+            // Possiblity of more scored entries than marked as received. Slim, but could happen.
+            // Best to go with what has presumably been judged.
+            if ($total_entries_scored > $total_entries_received) $total_entries_received = $total_entries_scored;
+
+            if ($total_entries_received >= 30) {
+                if (($beer_styles_total >= 5) || ($mead_cider_total >= 3)) $bos_judge_points = 0.5;
+            }
+
+            else {
+                $bos_judge_points = 0.0;
+                $bos_alert = $output_text_034;
+            }
 
             // Get the amount of days the competition took place
             $days = number_format(total_days(),1);
@@ -2521,10 +2523,20 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
                 $title_table->easyCell($string);
                 $title_table->printRow();
 
+                /*
                 $string = sprintf("%s: %s (%s)",$label_flights,total_flights(),$output_text_023);
                 $string = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $string)));
                 $title_table->easyCell($string);
                 $title_table->printRow();
+                */
+
+                if (!empty($bos_alert)) {
+                    $string = sprintf("%s: %s",$label_please_note,$bos_alert);
+                    $string = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $string)));
+                    $title_table->easyCell($string);
+                    $title_table->printRow();
+                }
+
                 $title_table->endTable();
 
                 if ($totalRows_organizer > 0) {
@@ -2790,6 +2802,8 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
 
             if ($view == "xml") {
 
+                $xml_output_message = "";
+
                 $filename = "";
                 if (!empty($_SESSION['contestID'])) $filename .= $_SESSION['contestID']."_";
                 $filename .= $_SESSION['contestName']."_BJCP_Points_Report_".$date_downloaded.".xml";
@@ -2833,6 +2847,45 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
 
                 if ($all_rules_applied) {
 
+                    // Only Beer (1), Cider (2), Mead (3), and Mead/Cider (4) accepted by BJCP
+                    $a = array(1,2,3,4); 
+                    
+                    $bos_data = array();
+                    
+                    foreach ($a as $type) {
+                        
+                        $style_type_info = style_type_info($type,"default");
+                        $style_type_info = explode("^",$style_type_info);
+                        
+                        if ($style_type_info[0] == "Y") {
+
+                            if ($style_type_info[2] == "Mead/Cider") $mead_cider_combined = TRUE;
+    
+                            $query_bos = sprintf("SELECT id FROM %s",$prefix."judging_scores");
+                            if ($mead_cider_combined) $query_bos .= " WHERE (scoreType='2' OR scoreType='3')";
+                            else $query_bos .= sprintf(" WHERE scoreType='%s'",$type);
+                            if ($style_type_info[1] == "1") $query_bos .= " AND scorePlace='1'";
+                            if ($style_type_info[1] == "2") $query_bos .= " AND (scorePlace='1' OR scorePlace='2')";
+                            if ($style_type_info[1] == "3") $query_bos .= " AND (scorePlace='1' OR scorePlace='2' OR scorePlace='3')";
+                            $bos = mysqli_query($connection,$query_bos);
+                            $row_bos = mysqli_fetch_assoc($bos);
+                            $totalRows_bos = mysqli_num_rows($bos);
+
+                            if ($totalRows_bos > 0) {
+
+                                if ($type == 1) $bos_data['BOSBeer'] = $totalRows_bos;
+                                if ($mead_cider_combined) $bos_data['BOSMeadCider'] = $totalRows_bos;
+                                else {
+                                    if ($type == 2) $bos_data['BOSCider'] = $totalRows_bos;
+                                    if ($type == 3) $bos_data['BOSMead'] = $totalRows_bos;
+                                }
+
+                            }
+
+                        }
+                    
+                    }
+
                     $st_running_total = 0;
 
                     $output = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n";
@@ -2844,12 +2897,20 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
                     $output .= "\t\t<CompEntries>".$total_entries_received."</CompEntries>\n";
                     $output .= "\t\t<CompDays>".$total_days."</CompDays>\n";
                     $output .= "\t\t<CompSessions>".total_sessions()."</CompSessions>\n";
-                    $output .= "\t\t<CompFlights>".total_flights()."</CompFlights>\n";
+                    // $output .= "\t\t<CompFlights>".total_flights()."</CompFlights>\n"; // Deprecated 2025
                     $output .= "\t</CompData>\n";
+
+                    if (!empty($bos_data)) {
+                        $output .= "\t<BOSData>\n";
+                        foreach ($bos_data as $key => $value) {
+                            $output .= "\t\t<".$key.">".$value."</".$key.">\n";
+                        }
+                        $output .= "\t</BOSData>\n";
+                    }
+                    
                     $output .= "\t<BJCPpoints>\n";
 
                     // Organizer
-
                     $organ_bjcp_id = "";
                     $organ_uid = "";
 
@@ -3301,9 +3362,11 @@ if (($admin_role) || ((($judging_past == 0) && ($registration_open == 2) && ($en
                     $output .= "\t<Comments>\n";
                     $output .= "\t\tGenerated by BCOEM version ".$current_version_display."\n";
                     $output .= "\t\tInstallation URL: ".$base_url."\n";
-                    $output .= "\t\t".$label_email.": ".$_SESSION['user_name']."\n";
+                    $output .= "\t\tSubmitter Name: ".$_SESSION['brewerFirstName']." ".$_SESSION['brewerLastName']."\n";
+                    $output .= "\t\tSubmitter Email: ".$_SESSION['user_name']."\n";
+                    if (!empty($bos_alert)) $output .= "\t\tNote: ".$bos_alert."\n";
                     $output .= "\t</Comments>\n";
-                    $output .= "\t<SubmissionDate>".date('l j F Y h:i:s A')."</SubmissionDate>\n";
+                    $output .= "\t<SubmissionDate>".date('l j F Y h:i A')."</SubmissionDate>\n";
                     $output .= "</OrgReport>";
 
                 } // end $all_rules_applied

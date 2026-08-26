@@ -56,7 +56,7 @@ if ($section != "step5") {
 // Build Secondary Page Info
 
 $secondary_page_info .= "<h5>Staff</h5>";
-$secondary_page_info .= "<p>According to <a class='hide-loader' href='http://www.bjcp.org/rules.php' target='_blank'>BJCP rules</a>, staff members are &quot;...program participants who, under the direction of the Organizer, perform an active role in support of the competition other than as a Judge, Steward, or BOS Judge.&quot;";
+$secondary_page_info .= "<p>According to <a class='hide-loader' href='https://www.bjcp.org/competitions/rules-regulations/' target='_blank'>BJCP rules</a>, staff members are &quot;...program participants who, under the direction of the Organizer, perform an active role in support of the competition other than as a Judge, Steward, or BOS Judge.&quot;";
 
 // Judging Locations & Dates List
 if ($section != "step5") {
@@ -200,7 +200,7 @@ if (($output_add_edit) && ($msg != 9)) {
 	if (!empty($form_submit_url)) echo $form_submit_url; 
 ?>
 
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <script type="text/javascript">
 	$(document).ready(function() {
 		$('#judgingDate').datetimepicker({
@@ -209,7 +209,7 @@ if (($output_add_edit) && ($msg != 9)) {
 	});
 </script>
 <input type="hidden" name="judgingLocType" value="2">
-<div class="form-group"><!-- Form Group REQUIRED Text Input -->
+<div class="form-group">
 	<label for="judgingLocName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Session Name</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
@@ -219,9 +219,9 @@ if (($output_add_edit) && ($msg != 9)) {
 		</div>
 		<span class="help-block">Provide the name of the judging location.</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group REQUIRED Text Input -->
+<div class="form-group">
 	<label for="judgingDate" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Session Start Date/Time</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group date has-warning">
@@ -231,9 +231,9 @@ if (($output_add_edit) && ($msg != 9)) {
 		</div>
 		<span class="help-block">Provide an start date and time for the session.</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group REQUIRED Text Input -->
+<div class="form-group">
 	<label id="judgingLocationLabel" for="judgingLocation" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Session Address</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
@@ -243,7 +243,15 @@ if (($output_add_edit) && ($msg != 9)) {
 		</div>
         <span id="helpBlockLocation1" class="help-block">Provide the street address, city, and zip/postal code where the session will take place.</span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
+
+<div class="form-group">
+    <label id="judgingLocNotesLabel" for="judgingLocNotes" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Notes</label>
+    <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+        <input class="form-control" id="judgingLocNotes" name="judgingLocNotes" type="text" maxlength="1000" value="<?php if ($action == "edit") echo $row_judging['judgingLocNotes']; ?>" placeholder="">  
+        <id id="helpBlock" class="help-block">Further information or notes for judges, stewards, and/or staff.</span>
+    </div>
+</div>
 
 <?php if (!empty($form_submit_button)) { ?>
 <div class="bcoem-admin-element hidden-print">

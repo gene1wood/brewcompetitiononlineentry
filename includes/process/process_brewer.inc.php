@@ -17,8 +17,8 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 	if ((isset($_SESSION['userLevel'])) && ($_SESSION['userLevel'] == 2)) {
 
 		// Check whether user is "authorized" to edit the entry in DB
-		$query_brewer_id = sprintf("SELECT id FROM $brewer_db_table WHERE uid = '%s'", $_SESSION['user_id']);
-		$brewer_id = mysqli_query($connection,$query_brewer_id) or die (mysqli_error($connection));
+		$query_brewer_id = sprintf("SELECT id,brewerFirstName,brewerLastName,brewerEmail FROM $brewer_db_table WHERE uid = '%s'", $_SESSION['user_id']);
+		$brewer_id = mysqli_query($connection,$query_brewer_id) or die("A database error occurred.");
 		$row_brewer_id = mysqli_fetch_assoc($brewer_id);
 
 		if ($id != $row_brewer_id['id']) {
@@ -62,7 +62,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 		foreach($_POST['uid'] as $uid) {
 
 			$query_staff = sprintf("SELECT COUNT(*) AS 'count' FROM %s WHERE uid='%s'",$prefix."staff",$uid);
-			$staff = mysqli_query($connection,$query_staff) or die (mysqli_error($connection));
+			$staff = mysqli_query($connection,$query_staff) or die("A database error occurred.");
 			$row_staff = mysqli_fetch_assoc($staff);
 
 			//echo $row_staff['count'];
@@ -115,7 +115,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 					// Check to see if the participant is assigned to be a judge or steward in the judging_assignments table
 					$query_assign = sprintf("SELECT id FROM $judging_assignments_db_table WHERE bid='%s' AND assignment='J'",$uid);
-					$assign = mysqli_query($connection,$query_assign) or die (mysqli_error($connection));
+					$assign = mysqli_query($connection,$query_assign) or die("A database error occurred.");
 					$row_assign = mysqli_fetch_assoc($assign);
 					$totalRows_assign = mysqli_num_rows($assign);
 
@@ -186,7 +186,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 					// Check to see if the participant is assigned to be a steward in the judging_assignments table
 					$query_assign = sprintf("SELECT id FROM $judging_assignments_db_table WHERE bid='%s' AND assignment='S'",$uid);
-					$assign = mysqli_query($connection,$query_assign) or die (mysqli_error($connection));
+					$assign = mysqli_query($connection,$query_assign) or die("A database error occurred.");
 					$row_assign = mysqli_fetch_assoc($assign);
 					$totalRows_assign = mysqli_num_rows($assign);
 
@@ -312,12 +312,12 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 		} // end foreach($_POST['uid'] as $uid)
 
-		if (($filter == "staff") && ($_POST['Organizer'] != "")) {
+		if (($filter == "staff") && ($_POST['staff_organizer'] != "")) {
 
-			$uid = sterilize($_POST['Organizer']);
+			$uid = sterilize($_POST['staff_organizer']);
 
 			$query_org = sprintf("SELECT * FROM %s WHERE uid='%s'", $prefix."staff", $uid);
-			$org = mysqli_query($connection,$query_org) or die (mysqli_error($connection));
+			$org = mysqli_query($connection,$query_org) or die("A database error occurred.");
 			$row_org = mysqli_fetch_assoc($org);
 			$totalRows_org = mysqli_num_rows($org);
 			//echo $_POST['Organizer']."<br>";
@@ -421,10 +421,10 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 	if ($action == "add") {
 
-		$query_user = sprintf("SELECT id FROM $users_db_table WHERE id = '%s'", $_POST['uid']);
-		$user = mysqli_query($connection,$query_user) or die (mysqli_error($connection));
-		$row_user = mysqli_fetch_assoc($user);
-		$totalRows_user = mysqli_num_rows($user);
+		$db_conn->where('id', sterilize($_POST['uid']));
+		$user_result = $db_conn->get($users_db_table, 1);
+		$totalRows_user = $db_conn->count;
+		$row_user = $user_result ? $user_result[0] : null;
 
 		$brewerEmail = filter_var($_POST['brewerEmail'],FILTER_SANITIZE_EMAIL);
 		$uid = sterilize($_POST['uid']);
@@ -488,7 +488,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 				// Check to see if processed correctly.
 				$query_brewer_check = sprintf("SELECT COUNT(*) as 'count' FROM %s",$brewer_db_table);
-				$brewer_check = mysqli_query($connection,$query_brewer_check) or die (mysqli_error($connection));
+				$brewer_check = mysqli_query($connection,$query_brewer_check) or die("A database error occurred.");
 				$row_brewer_check = mysqli_fetch_assoc($brewer_check);
 
 				// If so, mark step as complete in system table and redirect to next step.
@@ -500,7 +500,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 					$result = $db_conn->update ($update_table, $data);
 					if (!$result) $error_output[] = $db_conn->getLastError();
 
-					$insertGoTo = $base_url."setup.php?section=step3";
+					$insertGoTo = $base_url."setup.php?section=step3&go=preferences";
 
 				}
 
@@ -536,8 +536,8 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 		if ($brewerJudge == "N") {
 
-			$query_staff_assign = sprintf("SELECT id,uid,staff_judge FROM %s WHERE uid='%s'",$prefix."staff",$_POST['uid']);
-			$staff_assign = mysqli_query($connection,$query_staff_assign) or die (mysqli_error($connection));
+			$query_staff_assign = sprintf("SELECT id,uid,staff_judge FROM %s WHERE uid='%s'",$prefix."staff",mysqli_real_escape_string($connection,$uid));
+			$staff_assign = mysqli_query($connection,$query_staff_assign);
 			$row_staff_assign = mysqli_fetch_assoc($staff_assign);
 			$totalRows_staff_assign = mysqli_num_rows($staff_assign);
 
@@ -561,8 +561,8 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 			}
 
-			$query_table_assign = sprintf("SELECT id,bid,assignment FROM %s WHERE bid='%s'",$prefix."judging_assignments",$_POST['uid']);
-			$table_assign = mysqli_query($connection,$query_table_assign) or die (mysqli_error($connection));
+			$query_table_assign = sprintf("SELECT id,bid,assignment FROM %s WHERE bid='%s'",$prefix."judging_assignments",mysqli_real_escape_string($connection,$uid));
+			$table_assign = mysqli_query($connection,$query_table_assign);
 			$row_table_assign = mysqli_fetch_assoc($table_assign);
 			$totalRows_table_assign = mysqli_num_rows($table_assign);
 
@@ -590,8 +590,8 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 		if ($brewerSteward == "N") {
 
-			$query_staff_assign = sprintf("SELECT id,uid,staff_steward FROM %s WHERE uid='%s'",$prefix."staff",$_POST['uid']);
-			$staff_assign = mysqli_query($connection,$query_staff_assign) or die (mysqli_error($connection));
+			$query_staff_assign = sprintf("SELECT id,uid,staff_steward FROM %s WHERE uid='%s'",$prefix."staff",mysqli_real_escape_string($connection,$uid));
+			$staff_assign = mysqli_query($connection,$query_staff_assign);
 			$row_staff_assign = mysqli_fetch_assoc($staff_assign);
 			$totalRows_staff_assign = mysqli_num_rows($staff_assign);
 
@@ -615,8 +615,8 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 
 			}
 
-			$query_table_assign = sprintf("SELECT id,bid,assignment FROM %s WHERE bid='%s'",$prefix."judging_assignments",$_POST['uid']);
-			$table_assign = mysqli_query($connection,$query_table_assign) or die (mysqli_error($connection));
+			$query_table_assign = sprintf("SELECT id,bid,assignment FROM %s WHERE bid='%s'",$prefix."judging_assignments",mysqli_real_escape_string($connection,$uid));
+			$table_assign = mysqli_query($connection,$query_table_assign);
 			$row_table_assign = mysqli_fetch_assoc($table_assign);
 			$totalRows_table_assign = mysqli_num_rows($table_assign);
 
@@ -643,6 +643,19 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 		}
 
 		$update_table = $prefix."brewer";
+
+		if (($filter == "quick-no-judge") || ($filter == "quick-no-steward")){
+
+			$id = sterilize($_POST['id']);
+			$data = array(
+				'uid' => $uid, 
+				'brewerSteward' => blank_to_null($brewerSteward), 
+				'brewerJudge' => blank_to_null($brewerJudge)
+			);
+		} 
+			
+		
+		else 
 		$data = array(
 			'uid' => $uid,
 			'brewerFirstName' => blank_to_null($first_name),
@@ -724,7 +737,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			if ($totalRows_security_resp > 0) $check = $hasher_question->CheckPassword($userQuestionAnswer, $stored_hash);
 
 			if ($check == 0) {
-				// New  Store unhashed response for email confirmation
+				// Store unhashed response for email confirmation
 				$userQuestion_change = TRUE;
 				$userQuestionAnswer_email = $userQuestionAnswer;
 			}
@@ -762,6 +775,7 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 		if ($go == "register") $updateGoTo = $base_url."index.php?section=brew&msg=2";
 		elseif (($go == "judge") && ($filter == "default")) $updateGoTo = $base_url."index.php?section=list&go=".$go."&filter=default&msg=7";
 		elseif (($go == "judge") && ($filter != "default")) $updateGoTo = $base_url."index.php?section=admin&go=participants&msg=2";
+		elseif (($go == "account") && ($filter != "default")) $updateGoTo = $base_url."index.php?section=list&msg=2";
 		elseif ($go == "default") $updateGoTo = $base_url."index.php?section=list&go=".$go."&filter=default&msg=2";
 		else $updateGoTo = $updateGoTo;
 
@@ -771,16 +785,19 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 		$updateGoTo = prep_redirect_link($updateGoTo);
 		$redirect_go_to = sprintf("Location: %s", $updateGoTo);
 
-		if ($userQuestion_change) {
+		if (($userQuestion_change) && ($mail_use_smtp)) {
 
 			// Build vars
 			$url = str_replace("www.","",$_SERVER['SERVER_NAME']);
+			$first_name = $row_brewer_id['brewerFirstName'];
+			$last_name = $row_brewer_id['brewerLastName'];
 			
 			$from_email = (!isset($mail_default_from) || trim($mail_default_from) === '') ? "noreply@".$url : $mail_default_from;
 			if (strpos($url, 'brewingcompetitions.com') !== false) $from_email = $default_from."@brewingcompetitions.com";
 			$from_email = mb_convert_encoding($from_email, "UTF-8");
 
 			$contestName = $_SESSION['contestName'];
+			$from_name = $_SESSION['contestName']." Server";
 			$from_name = html_entity_decode($from_name);
 			$from_name = mb_convert_encoding($contestName, "UTF-8");
 
@@ -828,18 +845,14 @@ if ((isset($_SERVER['HTTP_REFERER'])) && (((isset($_SESSION['loginUsername'])) &
 			exit();
 			*/
 
-			if ($mail_use_smtp) {
-				$mail = new PHPMailer(true);
-				$mail->CharSet = 'UTF-8';
-				$mail->Encoding = 'base64';
-				$mail->addAddress($to_email, $to_name);
-				$mail->setFrom($from_email, $from_name);
-				$mail->Subject = $subject;
-				$mail->Body = $message;
-				sendPHPMailerMessage($mail);
-			} else {
-				mail($to_email_formatted, $subject, $message, $headers);
-			}
+			$mail = new PHPMailer(true);
+			$mail->CharSet = 'UTF-8';
+			$mail->Encoding = 'base64';
+			$mail->addAddress($to_email, $to_name);
+			$mail->setFrom($from_email, $from_name);
+			$mail->Subject = $subject;
+			$mail->Body = $message;
+			sendPHPMailerMessage($mail);
 
 		}
 

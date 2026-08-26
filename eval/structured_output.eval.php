@@ -90,7 +90,8 @@ if ($nw_cider) include(EVALS.'nw_structured_cider_output.eval.php');
 else {
 ?>
 <!-- Aroma -->
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_aroma; ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalAromaScore']; ?></span>/<?php echo $aroma_possible; ?></span></h5>
+<h5><?php echo $label_aroma; ?><span class="pull-right"><?php echo $row_eval['evalAromaScore']; ?> <small>/ <?php echo $aroma_possible; ?></small></span></h5>
+<hr>
 <?php foreach ($aroma_ticks as $key => $value) { ?>
 <div class="row tick-row no-break">
     <div class="col col-lg-2 col-md-2 col-sm-2 col-xs-2">
@@ -136,8 +137,8 @@ else {
 </div><!-- ./row -->
 
 <!-- Appearance -->
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_appearance; ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalAppearanceScore']; ?></span>/<?php echo $appearance_possible; ?></span></h5>
-
+<h5><?php echo $label_appearance; ?><span class="pull-right"><?php echo $row_eval['evalAppearanceScore']; ?> <small>/ <?php echo $appearance_possible; ?></small></span></h5>
+<hr>
 <?php if ($beer) { ?>
 <!-- Appearance: Color (Beer) -->
 <div class="row tick-row no-break">
@@ -380,7 +381,8 @@ else {
 </div><!-- ./row -->
 
 <!-- Flavor -->
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_flavor; ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalFlavorScore']; ?></span>/<?php echo $flavor_possible; ?></span></h5>
+<h5><?php echo $label_flavor; ?><span class="pull-right"><?php echo $row_eval['evalFlavorScore']; ?> <small>/ <?php echo $flavor_possible; ?></small></span></h5>
+<hr>
 <?php foreach ($flavor_ticks as $key => $value) { ?>
 <div class="row tick-row no-break">
     <div class="col col-lg-2 col-md-2 col-sm-2 col-xs-2">
@@ -577,7 +579,8 @@ else {
 </div><!-- ./row -->
 <!-- Mouthfeel (Beer only) -->
 <?php if ($beer) { ?>
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_mouthfeel ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalMouthfeelScore']; ?></span>/<?php echo $mouthfeel_possible; ?></span></h5>
+<h5><?php echo $label_mouthfeel ?><span class="pull-right"><?php echo $row_eval['evalMouthfeelScore']; ?> <small>/ <?php echo $mouthfeel_possible; ?></small></span></h5>
+<hr>
 <?php foreach ($mouthfeel_ticks as $key => $value) { ?>
 <div class="row tick-row no-break">
     <div class="col col-lg-2 col-md-2 col-sm-2 col-xs-2">
@@ -623,7 +626,8 @@ else {
 </div><!-- ./row -->
 <?php } // end if ($beer) ?>
 <!-- Overall Impression -->
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_overall_impression; ?><span class="pull-right"><span class="judge-score"><?php echo $row_eval['evalOverallScore']; ?></span>/<?php echo $overall_possible; ?></span></h5>
+<h5><?php echo $label_overall_impression ?><span class="pull-right"><?php echo $row_eval['evalOverallScore']; ?> <small>/ <?php echo $overall_possible; ?></small></span></h5>
+<hr>
 <p><?php echo htmlentities($row_eval['evalOverallComments']); ?></p>
 <div class="row section-row no-break">
     <div class="col col-lg-2 col-md-2 col-sm-2 col-xs-2">
@@ -674,11 +678,13 @@ else {
     </div>
 </div>
 <!-- Total -->
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_flaws; ?></h5>
+<h5><?php echo $label_flaws; ?></h5>
+<hr>
 <div style="margin-top: 10px;">
 <?php echo $flaws_table; ?>
 </div>
-<h5 class="header-h5 header-bdr-bottom"><?php echo $label_total; ?><span class="pull-right"><span class="judge-score"><?php echo $score; ?></span>/50</span></h5>
+<h5><?php echo $label_total; ?><span class="pull-right"><?php echo $score; ?> <small>/ 50</small></span></h5>
+<hr>
 <!-- Scoring Guide -->
 <div class="row footer-descriptor no-break" style="padding: 20px 0;">
 	<div class="col col-lg-6 col-md-6 col-sm-6 col-xs-6">
@@ -755,8 +761,22 @@ else {
 <?php } ?>
 
 <!-- Footer -->
-<?php if (!$nw_cider) { ?><p style="padding-top: 2em;"><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p><?php } ?>
-<?php if (!empty($row_eval['evalFinalScore'])) { ?>
-<p style="padding-top: 1em;"><small><em>** <?php echo $evaluation_info_069; ?></em></small></p>
-<?php } ?>
+<div class="row">
+    <div class="col col-xs-8">
+        <?php if (!$nw_cider) { ?><p style="padding-top: 2em;"><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p><?php } ?>
+        <?php if (!empty($row_eval['evalFinalScore'])) { ?>
+        <p style="padding-top: 1em;"><small><em>** <?php echo $evaluation_info_069; ?></em></small></p>
+        <?php } ?>
+    </div>
+    <div class="col col-xs-4">
+        <!--
+        <?php if ($_SESSION['prefsProEdition'] == 0) { ?>
+        <div class="pull-right">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data=<?php echo urlencode($mhp_qr_data); ?>&amp;size=150x150&amp;charset-source=UTF-8&amp;format=svg" />
+            <p><small><em>For MHP Use Only</em></small></p>
+        </div>
+        <?php } ?>
+        -->
+    </div>
+</div>
 <div style="page-break-after: always;"></div>

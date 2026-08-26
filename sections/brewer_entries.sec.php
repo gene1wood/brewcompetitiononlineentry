@@ -109,8 +109,8 @@ if (($totalRows_log > 0) && ($action != "print")) {
 		$warnings .= sprintf("<div class=\"alert alert-warning\"><span class=\"fa fa-lg fa-exclamation-triangle\"></span> <strong>%s</strong> %s</div>",$brewer_entries_text_004,$brewer_entries_text_005);
 	}
 
-	if (($_SESSION['prefsPayToPrint'] == "Y") && ($judging_past > 0) && (!$disable_pay) && (!$comp_paid_entry_limit)) {
-		$warnings .= sprintf("<div class=\"alert alert-warning\"><span class=\"fa fa-lg fa-exclamation-triangle\"></span> <strong>%s!</strong> %s</div>",$label_please_note, $alert_text_085);
+	if (($_SESSION['prefsPayToPrint'] == "Y") && ($judging_past > 0) && ($registration_open < 2) && (!$disable_pay) && (!$comp_paid_entry_limit)) {
+		if ((!empty($row_contest_dates['contestEntryEditDeadline'])) && ($row_contest_dates['contestEntryEditDeadline'] >= time())) $warnings .= sprintf("<div class=\"alert alert-warning\"><span class=\"fa fa-lg fa-exclamation-triangle\"></span> <strong>%s!</strong> %s</div>",$label_please_note, $alert_text_085);
 	}
 }
 
@@ -168,7 +168,24 @@ if ($totalRows_log > 0) {
 		$cider_mead_req_info = "";
 		if (!empty($row_log['brewMead1'])) $cider_mead_req_info .= "<li><strong>".$label_carbonation.":</strong> ".$row_log['brewMead1']."</li>";
 		if (!empty($row_log['brewMead2'])) $cider_mead_req_info .= "<li><strong>".$label_sweetness.":</strong> ".$row_log['brewMead2']."</li>";
-		if (!empty($row_log['brewSweetnessLevel'])) $cider_mead_req_info .= "<li><strong>".$label_final_gravity.":</strong> ".$row_log['brewSweetnessLevel']."</li>";
+		
+		if (!empty($row_log['brewSweetnessLevel'])) {
+
+			$sweetness_json = json_decode($row_log['brewSweetnessLevel'],true);
+			
+			if (json_last_error() === JSON_ERROR_NONE) {
+
+				if (!empty($sweetness_json['OG'])) $cider_mead_req_info .= "<li><strong>".$label_original_gravity.":</strong> ".$sweetness_json['OG']."</li>";
+				if (!empty($sweetness_json['FG'])) $cider_mead_req_info .= "<li><strong>".$label_final_gravity.":</strong> ".$sweetness_json['FG']."</li>";
+
+			}
+			
+			else {
+				$cider_mead_req_info .= "<li><strong>".$label_final_gravity.":</strong> ".$row_log['brewSweetnessLevel']."</li>";
+			}
+		
+		}
+		
 		if (!empty($row_log['brewMead3'])) $cider_mead_req_info .= "<li><strong>".$label_strength.":</strong> ".$row_log['brewMead3']."</li>";
 		if (!empty($cider_mead_req_info)) $required_info .= $cider_mead_req_info;
 
@@ -244,12 +261,15 @@ if ($totalRows_log > 0) {
 						
 				if (in_array($row_log['id'], $evals)) {
 
-					/*
-					if (HOSTED) $query_style = sprintf("SELECT id,brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s' UNION ALL SELECT id,brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s'", "bcoem_shared_styles", $_SESSION['prefsStyleSet'], $row_log['brewCategorySort'], $row_log['brewSubCategory'], $prefix."styles", $_SESSION['prefsStyleSet'], $row_log['brewCategorySort'], $row_log['brewSubCategory']);
-					else 
-					*/
-					$query_style = sprintf("SELECT id,brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s'",$prefix."styles",$_SESSION['prefsStyleSet'],$row_log['brewCategorySort'],$row_log['brewSubCategory']);
-					
+					if ($_SESSION['prefsStyleSet'] == "BJCP2025") {
+					    $first_character = mb_substr($row_log['brewCategorySort'], 0, 1);
+					    if ($first_character == "C") $chosen_style_set = "BJCP2025";
+					    else $chosen_style_set = "BJCP2021";
+					}
+
+					else $chosen_style_set = $_SESSION['prefsStyleSet'];
+
+					$query_style = sprintf("SELECT id,brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s'",$prefix."styles",$chosen_style_set,$row_log['brewCategorySort'],$row_log['brewSubCategory']);					
 					$style = mysqli_query($connection,$query_style) or die (mysqli_error($connection));
 					$row_style = mysqli_fetch_assoc($style);
 
@@ -257,6 +277,7 @@ if ($totalRows_log > 0) {
 					$scoresheet_es = TRUE;
 					$print_link = $base_url."includes/output.inc.php?section=evaluation&amp;go=default&amp;view=all&amp;id=".$row_log['id'];
 					$scoresheet_link_eval = "<a data-fancybox data-type=\"iframe\" class=\"modal-window-link hide-loader\" href=\"".$print_link."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"".$brewer_entries_text_025." &ndash; &ldquo;".$entry_name.".&rdquo;\"><i class=\"fa fa-lg fa-file-text\"></i></a>&nbsp;&nbsp;";
+				
 				}
 			
 			}

@@ -138,10 +138,6 @@ if ((!isset($_SESSION['prefs'.$prefix_session])) || (empty($_SESSION['prefs'.$pr
 
 			include(INCLUDES.'ba_constants.inc.php');
 
-			/*
-			if (HOSTED) $query_ba_style = sprintf("SELECT * FROM `bcoem_shared_styles` WHERE brewStyleVersion='BA' UNION ALL SELECT * FROM `%s` WHERE brewStyleVersion='BA'", $prefix."styles");
-			else 
-			*/
 			$query_ba_style = sprintf("SELECT * FROM %s WHERE brewStyleVersion='BA'", $prefix."styles");
 			$ba_style = mysqli_query($connection,$query_ba_style) or die (mysqli_error($connection));
 			$row_ba_style = mysqli_fetch_assoc($ba_style);
@@ -436,7 +432,7 @@ if ((check_update("prefsShowBestBrewer", $prefix."preferences")) && ($section !=
 	$judge_limits = mysqli_query($connection,$query_judge_limits) or die (mysqli_error($connection));
 	$row_judge_limits = mysqli_fetch_assoc($judge_limits);
 
-	$query_contest_dates = sprintf("SELECT contestCheckInPassword, contestRegistrationOpen, contestRegistrationDeadline, contestJudgeOpen, contestJudgeDeadline, contestEntryOpen, contestEntryDeadline, contestShippingOpen, contestShippingDeadline, contestDropoffOpen, contestDropoffDeadline, contestEntryEditDeadline FROM %s WHERE id=1", $prefix."contest_info");
+	$query_contest_dates = sprintf("SELECT contestCheckInPassword, contestRegistrationOpen, contestRegistrationDeadline, contestJudgeOpen, contestJudgeDeadline, contestEntryOpen, contestEntryDeadline, contestShippingOpen, contestShippingDeadline, contestDropoffOpen, contestDropoffDeadline, contestEntryEditDeadline, contestAwardsLocTime FROM %s WHERE id=1", $prefix."contest_info");
 	$contest_dates = mysqli_query($connection,$query_contest_dates) or die (mysqli_error($connection));
 	$row_contest_dates = mysqli_fetch_assoc($contest_dates);
 

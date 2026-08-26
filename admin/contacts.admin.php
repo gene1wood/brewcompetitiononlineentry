@@ -81,7 +81,7 @@ $form_url = $base_url."includes/process.inc.php?action=".$action."&amp;dbTable="
 if ($action == "edit") $form_url .= "&amp;id=".$id;
 ?>
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $form_url; ?>" name="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="bcoem-admin-element hidden-print">
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
 	<label for="contactFirstName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">First Name</label>
@@ -125,7 +125,7 @@ if ($action == "edit") $form_url .= "&amp;id=".$id;
 			<span class="input-group-addon" id="contactEmail-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
         <div class="help-block with-errors"></div>
-		<span id="helpBlock" class="help-block">Email addresses are <strong>not</strong> displayed. Used only for contact purposes via the site&rsquo;s <a href="<?php echo $base_url; ?>index.php?section=contact">contact form</a>.</span>
+		<span id="helpBlock" class="help-block">Email addresses are <strong>not</strong> displayed. Used only for contact purposes via the site&rsquo;s <a href="<?php echo $base_url; ?>#contact">contact form</a>.</span>
 	</div>
 </div><!-- ./Form Group -->
 <input type="hidden" name="relocate" value="<?php echo relocate($base_url."index.php?section=admin&go=contacts","default",$msg,$id); ?>">

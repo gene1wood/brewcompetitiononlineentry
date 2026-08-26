@@ -82,18 +82,10 @@ $table_styles = explode(",",$row_tables_edit['tableStyles']);
 $co_brewers_table = array();
 $industry_affliations = array();
 
-/*
-if (HOSTED) $styles_db_table = "bcoem_shared_styles";
-else
-*/
 $styles_db_table = $prefix."styles";
 
 foreach ($table_styles as $table_style) {
 
-  /*
-  if (HOSTED) $query_style = sprintf("SELECT brewStyleGroup,brewStyleNum FROM %s WHERE id='%s' UNION ALL SELECT brewStyleGroup,brewStyleNum FROM %s WHERE id='%s'", $prefix."styles", $table_style, $styles_db_table, $table_style);
-  else
-  */
   $query_style = sprintf("SELECT brewStyleGroup,brewStyleNum FROM %s WHERE id='%s'", $styles_db_table, $table_style);
   $style = mysqli_query($connection,$query_style) or die (mysqli_error($connection));
   $row_style = mysqli_fetch_assoc($style);
@@ -164,7 +156,7 @@ if ($totalRows_brewer > 0) {
       $cb_list = array();
       foreach ($co_brewers_table as $cb) {
          if (strpos($cb, $judge_info[1]) !== false) $cb_ct +=1;
-         $cb_list[] = $cb;
+         if (!empty($cb)) $cb_list[] = $cb;
       }
       if ($cb_ct > 0) $co_brewer_flag = TRUE;
     }
@@ -266,7 +258,7 @@ if ($totalRows_brewer > 0) {
             $assigned_at_this_table = TRUE;
             $assigned_at_table[] = $row_brewer['uid'];
             $assign_row_color = "bg-orange text-orange";
-            $assign_flag = "<span class=\"fa fa-lg fa-check\"></span> <strong>Assigned.</strong> Participant is assigned to this table/flight.";
+            $assign_flag = "<div style=\"padding-bottom:15px;\"><span class=\"fa fa-lg fa-check\"></span> <strong>Assigned.</strong> Participant is assigned to this table/flight.</div>";
             
             //$rank_number = preg_replace("/[^0-9,.]/", "", $display_rank);
             if ($rank_number >= 2) $ranked += 1;
@@ -763,7 +755,7 @@ $(document).ready(function() {
 <?php } ?>
 
 <form name="form1" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?action=update&amp;dbTable=<?php echo $judging_assignments_db_table; ?>&amp;filter=<?php echo $filter; ?>&amp;limit=<?php echo $row_rounds['flightRound']; ?>&amp;view=<?php echo $_SESSION['jPrefsQueued']; ?>&amp;id=<?php echo $row_tables_edit['id']; ?>">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <?php if ($_SESSION['jPrefsQueued'] == "N") { ?>
 <script type='text/javascript'>
 var hj_id = <?php if (!empty($head_judge_id)) echo max($head_judge_id); else echo "''"; ?>;

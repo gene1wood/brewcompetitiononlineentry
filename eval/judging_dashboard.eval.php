@@ -23,17 +23,17 @@ elseif (is_array($user_submitted_eval)) $score_previous = TRUE;
 
 if (TESTING) {
 
-	/*
-	if (HOSTED) $styles_db_table = "bcoem_shared_styles";
-	else
-	*/
 	$styles_db_table = $prefix."styles";
 
-	/*
-	if (HOSTED) $query_style = sprintf("SELECT brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s' UNION ALL SELECT brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s'",$prefix."styles",$_SESSION['prefsStyleSet'],$row_entries['brewCategorySort'],$row_entries['brewSubCategory'],$styles_db_table,$_SESSION['prefsStyleSet'],$row_entries['brewCategorySort'],$row_entries['brewSubCategory']);
-	else 
-	*/
-	$query_style = sprintf("SELECT brewStyleType FROM %s WHERE brewStyleVersion='%s'AND brewStyleGroup='%s' AND brewStyleNum='%s'",$prefix."styles",$_SESSION['prefsStyleSet'],$row_entries['brewCategorySort'],$row_entries['brewSubCategory']);
+	if ($_SESSION['prefsStyleSet'] == "BJCP2025") {
+        $first_character = mb_substr($row_entries['brewCategorySort'], 0, 1);
+        if ($first_character == "C") $chosen_style_set = "BJCP2025";
+        else $chosen_style_set = "BJCP2021";
+    }
+
+    else $chosen_style_set = $_SESSION['prefsStyleSet'];
+
+	$query_style = sprintf("SELECT brewStyleType FROM %s WHERE brewStyleVersion='%s' AND brewStyleGroup='%s' AND brewStyleNum='%s'",$prefix."styles", $chosen_style_set, $row_entries['brewCategorySort'], $row_entries['brewSubCategory']);
 	$style = mysqli_query($connection,$query_style) or die (mysqli_error($connection));
 	$row_style = mysqli_fetch_assoc($style);
 	
@@ -167,8 +167,8 @@ if (($judging_open) && (strpos($row_table_assignments['assignRoles'], "HJ") !== 
 
 		if ((!empty($eval_places)) && (count(array_unique($eval_places)) === 1)) $eval_place = $eval_places[0];
 
-		// save_column('".$base_url."','evalPlace','evaluation','".$row_entries['id']."','','','','','eval-place-ajax-".$row_entries['id']."');
-		// select_place_multi('".$base_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."');
+		// save_column('".$ajax_url."','evalPlace','evaluation','".$row_entries['id']."','','','','','eval-place-ajax-".$row_entries['id']."');
+		// select_place_multi('".$ajax_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."');
 
 		$actions .= "<div class=\"row\">";
 		$actions .= "<div class=\"col col-lg-6 col-md-7 col-sm-12\">";
@@ -177,9 +177,9 @@ if (($judging_open) && (strpos($row_table_assignments['assignRoles'], "HJ") !== 
 		$actions .= "<div class=\"col col-lg-6 col-md-5 col-sm-12\">";
 		$actions .= "<div style=\"margin-bottom:5px;\" id=\"eval-place-ajax-".$row_entries['id']."-evalPlace-form-group\">";
 		if ($_SESSION['prefsWinnerMethod'] == "0") {
-	        $actions .= "<select class=\"selectpicker eval-place-choose-".$tbl_id."\" id=\"eval-place-ajax-".$row_entries['id']."\" name=\"evalPlace".$row_entries['id']."\" title=\"".$label_place_awarded."\" data-width=\"100%\" onchange=\"select_place_multi('".$base_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."')\">";
+	        $actions .= "<select class=\"selectpicker eval-place-choose-".$tbl_id."\" id=\"eval-place-ajax-".$row_entries['id']."\" name=\"evalPlace".$row_entries['id']."\" title=\"".$label_place_awarded."\" data-width=\"100%\" onchange=\"select_place_multi('".$ajax_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."')\">";
 	    } else {
-	    	$actions .= "<select class=\"selectpicker eval-place-choose-".$tbl_id."\" id=\"eval-place-ajax-".$row_entries['id']."\" name=\"evalPlace".$row_entries['id']."\" title=\"".$label_place_awarded."\" data-width=\"100%\" onchange=\"save_column('".$base_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."')\">";
+	    	$actions .= "<select class=\"selectpicker eval-place-choose-".$tbl_id."\" id=\"eval-place-ajax-".$row_entries['id']."\" name=\"evalPlace".$row_entries['id']."\" title=\"".$label_place_awarded."\" data-width=\"100%\" onchange=\"save_column('".$ajax_url."','evalPlace','evaluation','".$row_entries['id']."','eval-place-choose-".$tbl_id."','','','','eval-place-ajax-".$row_entries['id']."')\">";
 	    }
         $actions .= "<option value=\"\"";
     	if (($eval_place == "") || ($eval_place == "0")) $actions .= " SELECTED";
@@ -215,10 +215,10 @@ if (($judging_open) && (strpos($row_table_assignments['assignRoles'], "HJ") !== 
 		$actions .= "<div style=\"margin-bottom:5px;\" class=\"col col-lg-6 col-md-5 col-sm-12\">";
 		$actions .= "<div class=\"input-group\">";
 		$actions .= "<label class=\"radio-inline ".$mini_bos_alert_css."\">";
-		$actions .= "<input type=\"radio\" name=\"evalMiniBOS".$row_entries['id']."\" value=\"1\" onclick=\"save_column('".$base_url."','evalMiniBOS','evaluation','".$row_entries['id']."','1','default','default','default','eval-mbos-ajax-".$row_entries['id']."','value')\" ".$mini_bos_checked_yes.">Yes";
+		$actions .= "<input type=\"radio\" name=\"evalMiniBOS".$row_entries['id']."\" value=\"1\" onclick=\"save_column('".$ajax_url."','evalMiniBOS','evaluation','".$row_entries['id']."','1','default','default','default','eval-mbos-ajax-".$row_entries['id']."','value')\" ".$mini_bos_checked_yes.">Yes";
 		$actions .= "</label>";
 		$actions .= "<label class=\"radio-inline ".$mini_bos_alert_css."\">";
-		$actions .= "<input type=\"radio\" name=\"evalMiniBOS".$row_entries['id']."\" value=\"0\" onclick=\"save_column('".$base_url."','evalMiniBOS','evaluation','".$row_entries['id']."','0','default','default','default','eval-mbos-ajax-".$row_entries['id']."','value')\" ".$mini_bos_checked_no.">No";
+		$actions .= "<input type=\"radio\" name=\"evalMiniBOS".$row_entries['id']."\" value=\"0\" onclick=\"save_column('".$ajax_url."','evalMiniBOS','evaluation','".$row_entries['id']."','0','default','default','default','eval-mbos-ajax-".$row_entries['id']."','value')\" ".$mini_bos_checked_no.">No";
 		$actions .= "</label>";
 		$actions .= "</div>";
 		$actions .= "<br><span id=\"eval-mbos-ajax-".$row_entries['id']."-evalMiniBOS-status\"></span> ";

@@ -114,8 +114,8 @@ else {
 		$primary_page_info .= "</ol>";
 	}
 
-	if ((isset($_SESSION['prefsPaypalIPN'])) && ($_SESSION['prefsPaypalIPN'] == 1))  $return = $base_url."index.php?section=pay&msg=10";
-	else $return = $base_url."index.php?section=pay&msg=10&view=".rtrim($return_entries,'-');
+	if ((isset($_SESSION['prefsPaypalIPN'])) && ($_SESSION['prefsPaypalIPN'] == 1))  $return = $base_url."index.php?section=list&msg=10";
+	else $return = $base_url."index.php?section=list&msg=10&view=".rtrim($return_entries,'-');
 	if (($total_to_pay > 0) && ($view == "default")) {
 
 		// Cash Payment
@@ -251,7 +251,7 @@ else {
 			$page_info4 .= "</div>";
 			$page_info4 .= "</div>";
 
-		} // end if (($_SESSION['prefsPaypal'] == "Y") || ($_SESSION['prefsGoogle'] == "Y"))
+		} // end if ($_SESSION['prefsPaypal'] == "Y")
 
 	}
 
@@ -260,7 +260,7 @@ else {
 		$page_info7 .= sprintf("<p>%s</p>",$pay_text_023);
 		$page_info7 .= sprintf("<form class=\"form-inline\" action=\"%sincludes/process.inc.php?action=check_discount&amp;dbTable=%s&amp;id=%s\" method=\"POST\" name=\"form1\" id=\"form1\">",$base_url,$brewer_db_table,$row_brewer['uid']);
 		$page_info7 .= "<input type=\"hidden\" name=\"token\" value =\"";
-		if (isset($_SESSION['token'])) $page_info7 .= $_SESSION['token'];
+		if (isset($_SESSION['user_session_token'])) $page_info7 .= $_SESSION['user_session_token'];
 		$page_info7 .= "\">";
 		$page_info7 .= sprintf("<div class=\"form-group\"><label for=\"brewerDiscount\" class=\"sr-only\">%s</label><input class=\"form-control\" name=\"brewerDiscount\" type=\"text\" value=\"\" placeholder=\"\" autofocus></div>",$label_discount_code);
 		$page_info7 .= sprintf("<input type=\"submit\" class=\"btn btn-primary\" value=\"%s\">",$label_verify);

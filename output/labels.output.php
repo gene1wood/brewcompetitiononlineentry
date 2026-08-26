@@ -19,6 +19,21 @@ $aabc = FALSE;
 if ($_SESSION['prefsStyleSet'] == "BA") $ba = TRUE;
 if ($_SESSION['prefsStyleSet'] == "AABC") $aabc = TRUE;
 
+function unique_multidim_array($array, $key) {
+    $temp_array = array();
+    $i = 0;
+    $key_array = array();
+    
+    foreach($array as $val) {
+        if (!in_array($val[$key], $key_array)) {
+            $key_array[$i] = $val[$key];
+            $temp_array[$i] = $val;
+        }
+        $i++;
+    }
+    return $temp_array;
+}
+
 /*
  * -------------------------------------------------------------------
  * Define a character limit for address labels. 
@@ -85,7 +100,7 @@ if (isset($_SESSION['loginUsername'])) {
 
 			if ($filter == "judges") {
 
-				$query_brewer = sprintf("SELECT * FROM %s WHERE brewerJudge='Y'",$prefix."brewer");
+				$query_brewer = sprintf("SELECT * FROM %s WHERE brewerJudge='Y' ORDER BY brewerLastName ASC",$prefix."brewer");
 				$brewer = mysqli_query($connection,$query_brewer) or die (mysqli_error($connection));
 				$row_brewer = mysqli_fetch_assoc($brewer);
 				
@@ -93,7 +108,7 @@ if (isset($_SESSION['loginUsername'])) {
 				if ($psort == "3422") $filename .= "_Avery3422";
 				else $filename .= "_Avery5160";
 				$filename .= ".pdf";
-				$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+				$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 				$pdf->AddPage();
 				$pdf->Next_Label();
@@ -133,13 +148,13 @@ if (isset($_SESSION['loginUsername'])) {
 								// Add name to the label
 								$pdf->SetFont('Arial', 'B', 14);
 								$judge_name = $judge_info[0] . ' ' . $judge_info[1];
-								$judge_name = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$judge_name);
+								$judge_name = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $judge_name)));
 								$pdf->Cell(66, 7, $judge_name, 0, 2, 'C');
 								
 								// Add location to the label
 								$pdf->SetFont('Arial', '', 10);
 								$judge_loc = $brewer_info[11] . ', ' . $brewer_info[12] ;
-								$judge_loc = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$judge_loc);
+								$judge_loc = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $judge_loc)));
 								$pdf->Cell(66, 6, $judge_loc, 0, 2, 'C');
 
 								// Add table flights to the label
@@ -149,7 +164,7 @@ if (isset($_SESSION['loginUsername'])) {
 									
 									if (in_array($v_loc['check'], $locations)) {
 										// Find which table this judge is assigned to for that location.
-										$assign = judge_assignment($brewer_info[7], $v_loc['id'] );
+										$assign = judge_assignment($brewer_info[7], $v_loc['id']);
 										//$assign = explode("^", $flight);
 										$table_flights[] = $assign['tableNumber'];
 									}
@@ -157,13 +172,27 @@ if (isset($_SESSION['loginUsername'])) {
 								}
 
 								// Display the assigned table number(s)
-								if (isset($table_flights[0])) {
+								if (!empty($table_flights)) {
 
-									$t_string = "Table(s)";
-									
-									$pdf->SetFont('Arial', 'B', 12);
-									$judge_flight = $t_string.": ". join(', ', $table_flights);
-									$judge_flight = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$judge_flight);
+									$pdf->SetFont('Arial', 'B', 12);									
+									$table_count = 0;
+									$judge_flight = "";
+
+									foreach ($table_flights as $key => $table_num) {
+
+										if (!empty($table_num)) {
+											$judge_flight .= $table_num.", ";
+											$table_count++;
+										}
+
+									}
+
+									if ($table_count > 1) $t_string = "Tables ";
+									else $t_string = "Table ";
+
+									$judge_flight = $t_string.$judge_flight;
+									$judge_flight = rtrim($judge_flight,", ");
+									$judge_flight = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $judge_flight)));
 									$pdf->Cell(66, 6, $judge_flight, 0, 2, 'C');
 								
 								} 
@@ -196,7 +225,7 @@ if (isset($_SESSION['loginUsername'])) {
 				if ($psort == "3422") $filename .= "_Avery3422";
 				else $filename .= "_Avery5160";
 				$filename .= ".pdf";
-				$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+				$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 				$pdf->AddPage();
 				$pdf->Next_Label();
@@ -210,12 +239,12 @@ if (isset($_SESSION['loginUsername'])) {
 
 					$tableName = htmlspecialchars_decode($row_tables['tableName']);
 					$tableName = truncate($tableName, 30);
-					$tableName = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$tableName);							
+					$tableName = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $tableName)));							
 
 					$loc_arr = explode("^", get_table_info($row_tables['tableLocation'], "location", $row_tables['id'], $dbTable, "default"));
 					$location = $loc_arr[2];
 					$location = htmlspecialchars_decode($location);
-					$location = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$location);
+					$location = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $location)));
 					$location = truncate($location, 30);
 
 					for ($i = 1; $i <= $sort; $i++) {
@@ -266,7 +295,7 @@ if (isset($_SESSION['loginUsername'])) {
 				if ($psort == "3422") 		$filename .= "_Avery3422";
 				else 						$filename .= "_Avery5160";
 				$filename .= ".pdf";
-				$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+				$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 				$pdf->SetFont('Courier','',6);
 				
@@ -290,7 +319,7 @@ if (isset($_SESSION['loginUsername'])) {
 					$entry_no, $cat_output
 					);
 
-					$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);              
+					$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));              
 					$pdf->Add_Label($text);
 
 				} while ($row_log = mysqli_fetch_assoc($log));
@@ -308,7 +337,7 @@ if (isset($_SESSION['loginUsername'])) {
 				
 				$filename = str_replace(" ", "_", $_SESSION['contestName']) . "_QuickSort_Labels_Judging_Numbers";
 				$filename .= ".pdf";
-				$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);  
+				$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename))); 
 				
 				$pdf = new PDF_Label('5167');
 
@@ -343,16 +372,14 @@ if (isset($_SESSION['loginUsername'])) {
 					$entry_number = sprintf("%06s", $row_log['id']);
 					$style = $row_log['brewCategory'] . $row_log['brewSubCategory'];
 					$style_name = truncate($row_log['brewStyle'], 18);
-					$style_name = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$style_name);  
 					$brewer_name = truncate($row_log['brewBrewerFirstName']." ".$row_log['brewBrewerLastName'],30);
-					$brewer_name = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$brewer_name);  
 					
 					$bottles = ['#1', '#2', '#3/BOS'];
 
 					$pdf->SetFont('Arial', '', 9);
 					foreach ($bottles as $b) {
 						$text = sprintf("\n              %s  %s\n                     %s", $style, $judging_number, $b);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 					}
 					
@@ -365,13 +392,13 @@ if (isset($_SESSION['loginUsername'])) {
 						// Print Entrant info
 						$pdf->SetFont('Arial', '', 9);
 						$text = sprintf("\n  %s %s\n  %s", $style, $style_name, $brewer_name);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 
 						$pdf->SetFont('Arial', '', 9);
 						foreach ($bottles as $b) {
 							$text = sprintf("\n              %s  %s\n                     %s", $style, $judging_number, $b);
-							$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+							$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 							$pdf->Add_Label($text);
 						}
 
@@ -380,7 +407,7 @@ if (isset($_SESSION['loginUsername'])) {
 						$pdf->SetFont('Arial', '', 13);
 						if ($entry_number == $judging_number) $text = sprintf("\n  %s", $entry_number);
 						else $text = sprintf("\n  %s | %s", $entry_number, $judging_number);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 
 					}
@@ -390,7 +417,7 @@ if (isset($_SESSION['loginUsername'])) {
 						$pdf->SetFont('Arial', '', 9);
 						if ($entry_number == $judging_number) $text = sprintf("\n  %s - %s \n  %s", $style, $entry_number, $brewer_name);
 						else $text = sprintf("\n  %s - %s | %s\n  %s", $style, $entry_number, $judging_number, $brewer_name);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 
 					}
@@ -472,7 +499,7 @@ if (isset($_SESSION['loginUsername'])) {
 				else $filename .= "_Avery5160";
 				if ($location != "default") $filename .= "_Table_".$table_info[0];
 				$filename .= ".pdf";
-				$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+				$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 				
 				// Print labels
 				do {
@@ -516,7 +543,7 @@ if (isset($_SESSION['loginUsername'])) {
 						if (strpos($style_name,"with") !== false) $style_name = str_replace("with", "w/", $style_name);
 
 						$style_name = truncate($style_name,21);
-						$style_name = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$style_name);
+						$style_name = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $style_name)));
 						
 						if ($ba) $entry_info = sprintf("%s (%s)", $entry_no, $style_name);
 						else $entry_info = sprintf("%s (%s: %s)", $entry_no, $style_display, $style_name);
@@ -529,7 +556,7 @@ if (isset($_SESSION['loginUsername'])) {
 							$special = str_replace("^", "", $special);
 							$special = str_replace("\n", "", $special);
 							$special = trim($special);
-							$special = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$special);
+							$special = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $special)));
 							
 							if (!empty($special)) {
 								$character_length += strlen($special);
@@ -570,7 +597,7 @@ if (isset($_SESSION['loginUsername'])) {
 							$allergens = sprintf("%s: %s",$label_allergens,$allergens);
 							$allergens = str_replace("\n"," ",$allergens);
 							$allergens = html_entity_decode($allergens);
-							$allergens = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$allergens);
+							$allergens = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $allergens)));
 							
 							if (!empty($allergens)) {
 								$character_length += strlen($allergens);
@@ -606,7 +633,7 @@ if (isset($_SESSION['loginUsername'])) {
 							if (($character_length < ($total_possible_characters - $character_limit))) {
 								$optional = html_entity_decode($row_log['brewInfoOptional']);
 								$optional = str_replace("\n"," ",truncate($optional,$character_limit,""));
-								$optional = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$optional);
+								$optional = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $optional)));
 								$character_length += strlen($optional);
 								$optional = sprintf("\n%s",$optional);
 							}
@@ -640,7 +667,7 @@ if (isset($_SESSION['loginUsername'])) {
 						}
 						
 						else $text = $entry_info.$special.$entry_str_sweet_carb.$allergens.$optional;
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text); 
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text))); 
 						
 						if (!empty($text)) $pdf->Add_Label($text);
 
@@ -684,14 +711,14 @@ if (isset($_SESSION['loginUsername'])) {
 					if (($entry_no != "") && ($filter == "default")) {
 						if ($aabc) $text = sprintf("\n%s\n(%s)",$entry_no, ltrim($row_log['brewCategory'],"0").".".ltrim($row_log['brewSubCategory'],"0"));
 						else $text = sprintf("\n%s\n(%s)",$entry_no, $row_log['brewCategory'].$row_log['brewSubCategory']);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 					}
 
 					if (($entry_no != "") && ($filter == "recent") && (strtotime($row_log['brewUpdated']) > $row_contest_dates['contestRegistrationDeadline'])) {
 						if ($aabc) $text = sprintf("\n%s\n(%s)",$entry_no, ltrim($row_log['brewCategory'],"0").".".ltrim($row_log['brewSubCategory'],"0"));
 						else $text = sprintf("\n%s\n(%s)",$entry_no, $row_log['brewCategory'].$row_log['brewSubCategory']);
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 					}
 
@@ -801,7 +828,7 @@ if (isset($_SESSION['loginUsername'])) {
 			$pdf->AddPage();
 			$pdf->SetFont('Arial','B',18);
 			$filename .= str_replace(" ","_",$_SESSION['contestName'])."_Nametags_Avery5395.pdf";
-			$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+			$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 			do {
 
@@ -822,12 +849,12 @@ if (isset($_SESSION['loginUsername'])) {
 					if ($row_brewer['brewerCity'] != "Anytown") $brewerLocation = $row_brewer['brewerCity'].", ".$row_brewer['brewerState'];
 
 					$text = sprintf("\n%s\n%s\n%s",
-						$row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName'],
-						$brewerAssignment,
-						$brewerLocation
+						html_entity_decode($row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']),
+						html_entity_decode($brewerAssignment),
+						html_entity_decode($brewerLocation)
 					);
 
-					$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text); 
+					$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text))); 
 					$pdf->Add_Label($text);
 
 				}
@@ -849,7 +876,7 @@ if (isset($_SESSION['loginUsername'])) {
 			if ($psort == "3422") 		$filename .= "_Avery3422";
 			else 						$filename .= "_Avery5160";
 			$filename .= ".pdf";
-			$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+			$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 			$character_limit = $character_limit + 6; // Arial allows for more characters per line
 
@@ -859,6 +886,7 @@ if (isset($_SESSION['loginUsername'])) {
 				$rank = bjcp_rank($bjcp_rank[0],2);
 				if (((strpos($rank, "Non-BJCP Judge") !== false)) && (($row_brewer['brewerJudgeMead'] == "Y") || ($row_brewer['brewerJudgeCider'] == "Y"))) $rank = "BJCP Cider or Mead Judge";
 				$mead = "";
+				$cider = "";
 				$pro = "";
 				$cert_cicerone = "";
 				$adv_cicerone = "";
@@ -870,11 +898,13 @@ if (isset($_SESSION['loginUsername'])) {
 				$rank .= strtoupper($judge_id);
 
 				if ($row_brewer['brewerJudgeMead'] == "Y") $mead = "Certified Mead Judge";
-				if ($row_brewer['brewerJudgeMCider'] == "Y") $cider = "Certified Cider Judge";
+				if (in_array("Certified Cider Guide", $bjcp_rank)) $cider = "Certified Cider Guide";
+	    		if (in_array("Certified Pommelier", $bjcp_rank)) $cider = "Certified Pommelier";
+				if ($row_brewer['brewerJudgeCider'] == "Y") $cider = "Certified Cider Judge";
 				if (in_array("Professional Brewer", $bjcp_rank)) $pro = "Professional Brewer";
 				if (in_array("Certified Cicerone", $bjcp_rank)) $cert_cicerone = "Certified Cicerone";
 				if (in_array("Advanced Cicerone", $bjcp_rank)) $adv_cicerone = "Advanced Cicerone";
-				if (in_array("Master Cicerone", $bjcp_rank)) $mast_cicerone = "Master Cicerone";
+				if (in_array("Master Cicerone", $bjcp_rank)) $mast_cicerone = "Master Cicerone";			
 
 				$cicerone = array();
 				$other = array();
@@ -898,18 +928,18 @@ if (isset($_SESSION['loginUsername'])) {
 				$other_ranks = ltrim($other_ranks,", ");
 				$other_ranks = ltrim($other_ranks,",");
 
-				$first_name = $row_brewer['brewerFirstName'];
-				$last_name = $row_brewer['brewerLastName'];
+				$first_name = html_entity_decode($row_brewer['brewerFirstName']);
+				$last_name = html_entity_decode($row_brewer['brewerLastName']);
 
 				for($i=0; $i<$number_of_labels; $i++) {
 
 					if (!empty($other_ranks)) {
-						$text = sprintf("\n%s %s\n%s\n%s\n%s",
-						$first_name,
-						$last_name,
-						truncate($rank,$character_limit),
-						truncate($other_ranks,$character_limit),
-						strtolower($row_brewer['brewerEmail'])
+							$text = sprintf("\n%s %s\n%s\n%s\n%s",
+							$first_name,
+							$last_name,
+							truncate($rank,$character_limit),
+							truncate($other_ranks,$character_limit),
+							strtolower($row_brewer['brewerEmail'])
 						);
 					}
 
@@ -922,7 +952,7 @@ if (isset($_SESSION['loginUsername'])) {
 						);
 					}
 
-					$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+					$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 					$pdf->Add_Label($text);
 				}
 
@@ -954,7 +984,8 @@ if (isset($_SESSION['loginUsername'])) {
 			else 						$filename .= "_Avery5160";
 
 			$filename .= ".pdf";
-			$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+			$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
+					
 
 			do {
 
@@ -962,31 +993,40 @@ if (isset($_SESSION['loginUsername'])) {
 
 					if (in_array($row_brewer['uid'],$with_entries_array)) {
 
+						if ($row_brewer['brewerCountry'] != "United States") $brewer_country = $row_brewer['brewerCountry']; else $brewer_country = "";
+						
 						$user_entry_count1 = user_entry_count($row_brewer['uid'],$view);
 						$user_entry_count2 = explode("^",$user_entry_count1);
 
-						if ($user_entry_count2[0] == 1) $entry_count ="(". $user_entry_count2[0]." Entry)";
-						else $entry_count = "(".$user_entry_count2[0]." Entries)";
+						if ($user_entry_count2[0] == 1) $entry_count = $user_entry_count2[0]." Entry";
+						else $entry_count = $user_entry_count2[0]." Entries";
 
 						if ($view == "entry") $entries = $user_entry_count2[1];
 						else $entries = $user_entry_count2[2];
 
-						if ($row_brewer['brewerCountry'] != "United States") $brewer_country = $row_brewer['brewerCountry']; else $brewer_country = "";
+						if (!empty($brewer_country)) $last_line = $brewer_country."\nEntry #: ".truncate($entries,126);
+						else $last_line = "Entry #: ".truncate($entries,166);
 
-						if (!empty($brewer_country)) $last_line = $brewer_country."\n#: ".truncate($entries,126);
-						else $last_line = "#: ".truncate($entries,166);
-
-						$text = sprintf("\n%s %s\n%s\n%s, %s %s\n%s",
-							$row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName'],
-							$entry_count,
-							$row_brewer['brewerAddress'],
-							$row_brewer['brewerCity'],
-							$row_brewer['brewerState'],
-							$row_brewer['brewerZip'],
-							$last_line
+						$text = sprintf("\n%s %s\n%s\n%s",
+							"Entry Summary for",
+							html_entity_decode($row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']),
+							html_entity_decode($entry_count),
+							html_entity_decode($last_line)
 						);
 
-						$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
+						$pdf->Add_Label($text);
+
+						$text = sprintf("\n%s\n%s\n%s, %s %s\n%s",
+							html_entity_decode($row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']),
+							html_entity_decode($row_brewer['brewerAddress']),
+							html_entity_decode($row_brewer['brewerCity']),
+							html_entity_decode($row_brewer['brewerState']),
+							html_entity_decode($row_brewer['brewerZip']),
+							html_entity_decode($brewer_country)
+						);
+
+						$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 						$pdf->Add_Label($text);
 
 					}
@@ -997,15 +1037,15 @@ if (isset($_SESSION['loginUsername'])) {
 					if ($row_brewer['brewerCountry'] != "United States") $brewer_country = $row_brewer['brewerCountry']; else $brewer_country = "";
 
 					$text = sprintf("\n%s\n%s\n%s, %s %s\n%s",
-					$row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName'],
-					$row_brewer['brewerAddress'],
-					$row_brewer['brewerCity'],
-					$row_brewer['brewerState'],
-					$row_brewer['brewerZip'],
-					$brewer_country
+						html_entity_decode($row_brewer['brewerFirstName']." ".$row_brewer['brewerLastName']),
+						html_entity_decode($row_brewer['brewerAddress']),
+						html_entity_decode($row_brewer['brewerCity']),
+						html_entity_decode($row_brewer['brewerState']),
+						html_entity_decode($row_brewer['brewerZip']),
+						html_entity_decode($brewer_country)
 					);
 
-					$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+					$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 					$pdf->Add_Label($text);
 
 				}
@@ -1029,9 +1069,66 @@ if (isset($_SESSION['loginUsername'])) {
 			if ($psort == "3422") $filename .= "_Avery3422";
 			else $filename .= "_Avery5160";
 			$filename .= ".pdf";
-			$filename = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$filename);
+			$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
 
 			include (DB.'output_labels_awards.db.php');
+			ob_end_clean();
+			//$pdf->Output();
+			$pdf->Output($filename,'D');
+
+		}
+
+		if (($go == "judging_scores") && ($action == "awards") && ($filter == "address")) {
+
+			if ($psort == "3422") $pdf = new PDF_Label('3422');
+			else $pdf = new PDF_Label('5160');
+			$pdf->AddPage();
+			$pdf->SetFont('Arial','',9);
+
+			$filename .= str_replace(" ","_",$_SESSION['contestName'])."_Winner_Address_Labels";
+			if ($psort == "3422") $filename .= "_Avery3422";
+			else $filename .= "_Avery5160";
+			$filename .= ".pdf";
+			$filename = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $filename)));
+
+			$query_scores = sprintf("SELECT c.brewerLastName, c.brewerFirstName, c.brewerClubs, c.brewerAddress, c.brewerCity, c.brewerState, c.brewerZip, c.brewerCountry, b.brewBrewerID, b.brewBrewerFirstName, b.brewBrewerLastName FROM %s a, %s b, %s c WHERE a.eid = b.id AND c.uid = b.brewBrewerID AND (a.scorePlace IS NOT NULL) ORDER BY c.brewerLastName,c.brewerFirstName", $prefix."judging_scores", $prefix."brewing", $prefix."brewer");
+			$scores = mysqli_query($connection,$query_scores) or die (mysqli_error($connection));
+			$row_scores = mysqli_fetch_assoc($scores);
+			$totalRows_scores = mysqli_num_rows($scores);
+
+			$address_labels_winners = array();
+
+			do {
+
+				$address_labels_winners[] = array(
+					"brewBrewerID" => $row_scores['brewBrewerID'],
+					"brewerFirstName" => $row_scores['brewerFirstName'],
+					"brewerLastName" => $row_scores['brewerLastName'],
+					"brewerAddress" => $row_scores['brewerAddress'],
+					"brewerCity" => $row_scores['brewerCity'],
+					"brewerState" => $row_scores['brewerState'],
+					"brewerZip" => $row_scores['brewerZip'],
+					"brewerCountry" => $row_scores['brewerCountry']
+				);
+
+			} while($row_scores = mysqli_fetch_assoc($scores));
+
+			$address_labels_winners = unique_multidim_array($address_labels_winners,'brewBrewerID');
+
+			foreach ($address_labels_winners as $key => $value) {
+				if ($value['brewerCountry'] != "United States") $brewer_country = $value['brewerCountry']; else $brewer_country = "";
+				$text = sprintf("\n%s\n%s\n%s, %s %s\n%s",
+					html_entity_decode($value['brewerFirstName']." ".$value['brewerLastName']),
+					html_entity_decode($value['brewerAddress']),
+					html_entity_decode($value['brewerCity']),
+					html_entity_decode($value['brewerState']),
+					html_entity_decode($value['brewerZip']),
+					html_entity_decode($brewer_country)
+				);
+				$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
+				$pdf->Add_Label($text);
+			}
+
 			ob_end_clean();
 			//$pdf->Output();
 			$pdf->Output($filename,'D');
@@ -1071,8 +1168,8 @@ if (isset($_SESSION['loginUsername'])) {
 		$pdf->AddPage();
 		$pdf->SetFont('Arial','',8);
 
-		$first_name = $row_brewer['brewerFirstName'];
-		$last_name = $row_brewer['brewerLastName'];
+		$first_name = html_entity_decode($row_brewer['brewerFirstName']);
+		$last_name = html_entity_decode($row_brewer['brewerLastName']);
 
 		//echo $query_brewer;
 
@@ -1099,6 +1196,8 @@ if (isset($_SESSION['loginUsername'])) {
 		$rank .= strtoupper($judge_id);
 
 		if ($row_brewer['brewerJudgeMead'] == "Y") $mead = "Certified Mead Judge";
+		if (in_array("Certified Cider Guide", $bjcp_rank)) $cider = "Certified Cider Guide";
+	    if (in_array("Certified Pommelier", $bjcp_rank)) $cider = "Certified Pommelier";
 		if ($row_brewer['brewerCiderMead'] == "Y") $cider = "Certified Cider Judge";
 		if (in_array("Professional Brewer", $bjcp_rank)) $pro = "Professional Brewer";
 		if (in_array("Certified Cicerone", $bjcp_rank)) $cert_cicerone = "Certified Cicerone";
@@ -1149,7 +1248,7 @@ if (isset($_SESSION['loginUsername'])) {
 				);
 			}
 
-			$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+			$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 			$pdf->Add_Label($text);
 
 		}

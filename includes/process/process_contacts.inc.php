@@ -1,6 +1,6 @@
 <?php
 
-/*
+/**
  * Module:      process_contacts.inc.php
  * Description: This module does all the heavy lifting for adding/editing info in the "contacts" table
  */
@@ -8,10 +8,16 @@
 use PHPMailer\PHPMailer\PHPMailer;
 require(LIB.'email.lib.php');
 require (CLASSES.'htmlpurifier/HTMLPurifier.standalone.php');
+require (CLASSES.'is_email/is_email.php');
 $config_html_purifier = HTMLPurifier_Config::createDefault();
 $purifier = new HTMLPurifier($config_html_purifier);
 
 $captcha_success = FALSE;
+
+define('MIN_SUBMISSION_TIME', 5); // Minimum seconds to fill form (bots are faster)
+define('MAX_SUBMISSION_TIME', 1200); // Maximum seconds (20 minutes)
+define('MIN_MOUSE_MOVEMENTS', 5); // Minimum mouse movements expected
+define('MIN_KEY_PRESSES', 15); // Minimum key presses expected
 
 if (isset($_SERVER['HTTP_REFERER'])) {
 
@@ -21,21 +27,161 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 
 	if ($action == "email") {
 
-		if (($_SESSION['prefsCAPTCHA'] == 1) && (isset($_POST['g-recaptcha-response'])) && (!empty($_POST['g-recaptcha-response']))) {
+		// Check if post, otherwise, redirect
+		if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
-			if ((!HOSTED) && (!empty($_SESSION['prefsGoogleAccount']))) {
-				$recaptcha_key = explode("|", $_SESSION['prefsGoogleAccount']);
-				$private_captcha_key = $recaptcha_key[1];
-			}
-
-			$verify_response = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret='.$private_captcha_key.'&response='.$_POST['g-recaptcha-response']);
-			$response_data = json_decode($verify_response);
-
-			if (($_SERVER['SERVER_NAME'] == $response_data->hostname) && ($response_data->success)) $captcha_success = TRUE;
+			$redirect = $base_url."index.php?msg=98";
+			$redirect = prep_redirect_link($redirect);
+			$redirect_go_to = sprintf("Location: %s", $redirect);
 
 		}
 
-		elseif ($_SESSION['prefsCAPTCHA'] == 0) $captcha_success = TRUE;
+		$ip_address = $_SERVER['REMOTE_ADDR'];
+		$rate_limit_file = sys_get_temp_dir() . '/contact_form_' . md5($ip_address) . '.txt';
+
+		if (file_exists($rate_limit_file)) {
+		    $last_submission = file_get_contents($rate_limit_file);
+		    if (time() - $last_submission < 60) { // 60 seconds cooldown
+		        $redirect = $base_url."index.php?msg=98";
+		        $redirect = prep_redirect_link($redirect);
+		        $redirect_go_to = sprintf("Location: %s", $redirect);
+		    }
+		}
+
+		// Honeypot check - if filled, it's a bot (silently fail)
+		if (!empty($_POST['website'])) {
+		    $redirect = $base_url."index.php?view=your+mom&msg=19";
+		    $redirect = prep_redirect_link($redirect);
+		    $redirect_go_to = sprintf("Location: %s", $redirect);
+		}
+
+		// Timing analysis - check if form was filled too quickly or slowly
+		if (empty($_POST['form_loaded_time'])) {
+		    $redirect = $base_url."index.php?msg=98";
+		   	$redirect = prep_redirect_link($redirect);
+		    $redirect_go_to = sprintf("Location: %s", $redirect);
+		}
+
+		else {
+
+			$form_loaded_time = intval($_POST['form_loaded_time']) / 1000; // Convert to seconds
+			$current_time = time();
+			$time_taken = $current_time - $form_loaded_time;
+
+			// Too fast - likely a bot; silently fail
+			if ($time_taken < MIN_SUBMISSION_TIME) {
+			    $redirect = $base_url."index.php?view=your+mom&msg=19";
+			    $redirect = prep_redirect_link($redirect);
+			    $redirect_go_to = sprintf("Location: %s", $redirect);
+			}
+
+			if ($time_taken > MAX_SUBMISSION_TIME) {
+			    $redirect = $base_url."index.php?msg=3";
+			    $redirect = prep_redirect_link($redirect);
+			    $redirect_go_to = sprintf("Location: %s", $redirect);
+			}
+		
+		}
+
+		// Check for spam patterns
+		$spam_patterns = [
+		    '/\b(viagra|cialis|pharmacy|casino|poker|lottery)\b/i',
+		    '/(http|https|www\.)\S+\.(com|net|org|ru|cn)\S*/i', // Multiple URLs
+		    '/\b\d{10,}\b/', // Long number sequences
+		    '/[A-Z]{10,}/', // Excessive caps
+		];
+
+		$spam_count = 0;
+
+		foreach ($spam_patterns as $pattern) {
+		    if (preg_match($pattern, $_POST['message'])) {
+		        $spam_count++;
+		    }
+		}
+
+		if ($spam_count > 0) {
+			$redirect = $base_url."index.php?view=your+mom&msg=19";
+			$redirect = prep_redirect_link($redirect);
+			$redirect_go_to = sprintf("Location: %s", $redirect);
+		}
+
+		// Human interaction checks
+		$mouse_movements = isset($_POST['mouse_movements']) ? intval($_POST['mouse_movements']) : 0;
+		$key_presses = isset($_POST['key_presses']) ? intval($_POST['key_presses']) : 0;
+
+		// Suspicious behavior - likely a bot
+		if ($mouse_movements < MIN_MOUSE_MOVEMENTS || $key_presses < MIN_KEY_PRESSES) {
+		    $redirect = $base_url."index.php?view=your+mom&msg=19";
+		    $redirect = prep_redirect_link($redirect);
+		    $redirect_go_to = sprintf("Location: %s", $redirect);
+		}
+
+		// Validate email
+		$from_email = strtolower(filter_var($_POST['from_email'], FILTER_SANITIZE_EMAIL));
+		
+		if (!empty($from_email)) {
+			if (!is_email($from_email)) {
+				$redirect = $base_url."index.php?msg=98";
+		    	$redirect = prep_redirect_link($redirect);
+		    	$redirect_go_to = sprintf("Location: %s", $redirect);
+			}
+		}
+
+		if ($_SESSION['prefsCAPTCHA'] == 1) {
+
+			$captcha_response = FALSE;
+
+			if ((isset($_POST['g-recaptcha-response'])) && (!empty($_POST['g-recaptcha-response']))) $captcha_response = TRUE;
+			if ((isset($_POST['h-captcha-response'])) && (!empty($_POST['h-captcha-response']))) $captcha_response = TRUE;
+
+			if ($captcha_response) {
+
+				if (HOSTED) $captcha_type = 2;
+
+				else {
+
+					if (!empty($_SESSION['prefsGoogleAccount'])) {
+						$captcha_key = explode("|", $_SESSION['prefsGoogleAccount']);
+						$private_captcha_key = $captcha_key[1];
+						if (isset($captcha_key[2])) $captcha_type = $captcha_key[2];
+						else $captcha_type = 1; // default to reCAPTCHA
+					}
+
+				}
+
+				// Verify reCAPTCHA response
+				if ($captcha_type == 1) {
+					$response = file_get_contents('https://www.google.com/recaptcha/api/siteverify?secret='.$private_captcha_key.'&response='.$_POST['g-recaptcha-response']);
+					$response_data = json_decode($response);
+					if (($_SERVER['SERVER_NAME'] == $response_data->hostname) && ($response_data->success)) $captcha_success = TRUE;	
+				}
+
+				// Verify hCAPTCHA response
+				if ($captcha_type == 2) {
+
+					$hCAPTCHA_data = array(
+						'secret' => $private_captcha_key,
+						'response' => $_POST['h-captcha-response']
+					);
+					
+					$verify = curl_init();
+					curl_setopt($verify, CURLOPT_URL, "https://hcaptcha.com/siteverify");
+					curl_setopt($verify, CURLOPT_POST, true);
+					curl_setopt($verify, CURLOPT_POSTFIELDS, http_build_query($hCAPTCHA_data));
+					curl_setopt($verify, CURLOPT_RETURNTRANSFER, true);
+					
+					$response = curl_exec($verify);
+					$response_data = json_decode($response);
+					
+					if ($response_data->success) $captcha_success = TRUE;
+				
+				}
+
+			}
+
+		}
+
+		if ($_SESSION['prefsCAPTCHA'] == 0) $captcha_success = TRUE;
 
 		if (!$captcha_success) {
 
@@ -45,15 +191,15 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 			setcookie("subject", sterilize(ucwords($_POST['subject'])), 0, "/");
 			setcookie("message", sterilize($_POST['message']), 0, "/");
 			
-			$redirect = $base_url."index.php?section=contact&action=email&msg=2";
+			$redirect = $base_url."index.php?msg=20";
 			$redirect = prep_redirect_link($redirect);
 			$redirect_go_to = sprintf("Location: %s", $redirect);
 
 		}
 
-		else {
+		if ($mail_use_smtp) {
 
-			$query_contact = sprintf("SELECT * FROM $contacts_db_table WHERE id='%s'", $_POST['to']);
+			$query_contact = sprintf("SELECT * FROM $contacts_db_table WHERE id='%s'", sterilize($_POST['to']));
 			$contact = mysqli_query($connection,$query_contact) or die (mysqli_error($connection));
 			$row_contact = mysqli_fetch_assoc($contact);
 
@@ -63,9 +209,7 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 
 			$to_email = $row_contact['contactEmail'];
 			$to_email = mb_convert_encoding($to_email, "UTF-8");
-			$to_email_formatted = $to_name." <".$to_email.">";
 
-			$from_email = strtolower(filter_var($_POST['from_email'], FILTER_SANITIZE_EMAIL));
 			$from_email = mb_convert_encoding($from_email, "UTF-8");
 
 			$from_name = sterilize(ucwords($_POST['from_name']));
@@ -77,61 +221,63 @@ if (isset($_SERVER['HTTP_REFERER'])) {
 			$subject = mb_convert_encoding($subject, "UTF-8");
 
 			$message_post = sterilize($_POST['message']);
-	
-			$url = str_replace("www.","",$_SERVER['SERVER_NAME']);
-			
-			$from_competition_email = (!isset($mail_default_from) || trim($mail_default_from) === '') ? "noreply@".$url : $mail_default_from;
-			$from_competition_email = mb_convert_encoding($from_competition_email, "UTF-8");
+				
+			$from_competition_email = mb_convert_encoding(filter_var($_SESSION['prefsEmailFrom'], FILTER_SANITIZE_EMAIL), "UTF-8");
 			
 			$comp_name = mb_convert_encoding($_SESSION['contestName'], "UTF-8");
 
 			// Build the message
 			$message = "<html>" . "\r\n";
 			$message .= "<body>";
-			$message .= "<p>". $message_post. "</p>";
-			$message .= "<p><strong>Sender's Contact Info</strong><br>Name: " . $from_name . "<br>Email: ". $from_email . "<br><em><small>** Use if you try to reply and the email address contains &quot;noreply&quot; in it. Common with web-based mail services such as Gmail.</small></em></p>";
-			if ((DEBUG || TESTING) && (ENABLE_MAILER)) $message .= "<p><small>Sent using phpMailer.</small></p>";
+			$message .= "<p><small>------------- Begin Sender's Message -------------</small></p>";
+			$message .= "<p>".$message_post."</p>";
+			$message .= "<p><small>-------------- End Sender's Message --------------</small></p>";
+			
+			$message .= "<p>The following information is provided by the BCOE&M processing script. Significant effort has been applied to prevent SPAM, and appropriate security measures have been taken to validate and sanitize the sender's input.</p>";
+			$message .= "<p><strong>Sender's Contact Info</strong><br>Name: " . $from_name . "<br>Email: ". $from_email . "<br><em><small>Use if you try to reply and the email address contains &quot;noreply&quot; in it. Common with web-based mail services such as Gmail.</small></em></p>";
+				
+			if (HOSTED) {
+				$message .= "<p>*** Since this email originated from the ".$comp_name." website, a <a href='https://info.brewingcompetitions.com/hosting'>hosted BCOE&M installation</a> where you are <a href='".$base_url."#contact'>listed as a contact</a>, please <strong>DO NOT report this email as SPAM</strong> via your email client or other means &ndash; even if it does appear to be. Doing so may flag the originating email address (noreply@brewingcompetitions.com) as &quot;abusive,&quot; which will prevent any other system-generated emails from being sent for ALL hosted installations housed on brewingcompetitions.com. ***</p>";
+				$message .= "<p>If you have any questions, please <a href='mailto:admin@brewingcompetitions.com'>contact Geoff Humphrey</a>, developer of BCOE&M.</p>";
+			}
+
+			if (DEBUG || TESTING) $message .= "<p><small>Sent using phpMailer.</small></p>";
 			$message .= "</body>" . "\r\n";
 			$message .= "</html>";
-
-			$headers  = "MIME-Version: 1.0"."\r\n";
-			$headers .= "Content-type: text/html; charset=utf-8"."\r\n";
-			$headers .= "From: ".$comp_name." Server <".$from_competition_email.">" . "\r\n"; 
-			$headers .= "Reply-To: ".$from_name." <".$from_email.">"."\r\n";
-			if ((!HOSTED) && ($_SESSION['prefsEmailCC'] == 0)) $headers .= "Bcc: ".$from_name." <".$from_email.">"."\r\n";
 
 			/*
 			// Debug
 			echo $to_email."<br>";
 			echo $to_name."<br>";
-			echo $headers."<br>";
 			echo "To: ".$to_name." ".$to_email."<br>";
 			echo "From: ".$comp_name." ".$from_competition_email."<br>";
 			echo "Reply-To: ".$from_name." ".$from_email."<br>";
-			if ($_SESSION['prefsEmailCC'] == 0) echo "Bcc: ".$from_name." ".$from_email."<br>";
+			if ($_SESSION['prefsEmailCC'] == 1) echo "Bcc: ".$from_name." ".$from_email."<br>";
 			echo $message;
-			exit;
+			exit();
 			*/
+			
+			$mail = new PHPMailer(true);
+			$mail->CharSet = 'UTF-8';
+			$mail->Encoding = 'base64';
+			$mail->addAddress($to_email, $to_name);
+			$mail->setFrom($from_competition_email, $comp_name);
+			$mail->addReplyTo($from_email, $from_name);
+			if ((!HOSTED) && ($_SESSION['prefsEmailCC'] == 1)) $mail->addBCC($from_email, $from_name);
+			$mail->Subject = $subject;
+			$mail->Body = $message;
+			sendPHPMailerMessage($mail);
 
-			if ($mail_use_smtp) {				
-				$mail = new PHPMailer(true);
-				$mail->CharSet = 'UTF-8';
-				$mail->Encoding = 'base64';
-				$mail->addAddress($to_email, $to_name);
-				$mail->setFrom($from_competition_email, $comp_name);
-				$mail->addReplyTo($from_email, $from_name);
-				if ((!HOSTED) && ($_SESSION['prefsEmailCC'] == 0)) $mail->addBCC($from_email, $from_name);
-				$mail->Subject = $subject;
-				$mail->Body = $message;
-				sendPHPMailerMessage($mail);
-			} else {
-				mail($to_email_formatted, $subject, $message, $headers);
-			}
-
-			$redirect = $base_url."index.php?section=contact&action=email&id=".$row_contact['id']."&msg=1";
+			$redirect = $base_url."index.php?view=".str_replace(" ", "+", $to_name)."&msg=19";
 			$redirect = prep_redirect_link($redirect);
 			$redirect_go_to = sprintf("Location: %s", $redirect);
 
+		}
+
+		else {
+			$redirect = $base_url."index.php?&msg=3";
+			$redirect = prep_redirect_link($redirect);
+			$redirect_go_to = sprintf("Location: %s", $redirect);
 		}
 
 	} // end if ($action == "email")

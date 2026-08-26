@@ -87,7 +87,7 @@ if ($filter == "staff") {
     <div class="page-header">
         <h1>
 		<?php
-		if ($filter == "staff") echo "Staff Availability";
+		if ($filter == "staff") echo $label_staff_availability;
 		else {
 			if ($filter == "S") echo sprintf("%s ",$label_steward);
 			else echo sprintf("%s ",$label_judge);
@@ -163,6 +163,8 @@ if ($filter == "staff") {
 	    if (in_array("Advanced Cicerone", $judge_rank)) $cert_add .= ", Advanced Cicerone";
 	    if (in_array("Certified Cicerone", $judge_rank)) $cert_add .= ", Certified Cicerone";
 	    if (in_array("Professional Brewer", $judge_rank)) $cert_add .= ", Professional Brewer";
+	    if (in_array("Certified Cider Guide", $judge_rank)) $cert_add .= ", Certified Cider Guide";
+	    if (in_array("Certified Pommelier", $judge_rank)) $cert_add .= ", Certified Pommelier";
 		$role = "";
 		if (!empty($row_assignments['assignRoles'])) $role .= str_replace($role_replace1,$role_replace2,$row_assignments['assignRoles']);
 	?>

@@ -59,7 +59,7 @@ $(document).ready(function () {
 <?php } ?>
 <?php if ($action == "default") { ?>
 <form name="form1" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?action=update&amp;dbTable=<?php echo $sponsors_db_table; ?>">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <script type="text/javascript" language="javascript">
 	 $(document).ready(function() {
 		$('#sortable').dataTable( {
@@ -117,7 +117,7 @@ $(document).ready(function () {
   <td><?php if (isset($row_sponsors['sponsorLevel'])) { ?>
     <?php if ($dbTable == "default") { ?>
     <div class="form-group" id="sponsor-level-ajax-<?php echo $row_sponsors['id']; ?>-sponsorLevel-form-group">
-      <select class="selectpicker" name="sponsorLevel<?php echo $row_sponsors['id']; ?>" id="sponsor-level-ajax-<?php echo $row_sponsors['id']; ?>" data-width="auto" onchange="save_column('<?php echo $base_url; ?>','sponsorLevel','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-level-ajax-<?php echo $row_sponsors['id']; ?>','value')">
+      <select class="selectpicker" name="sponsorLevel<?php echo $row_sponsors['id']; ?>" id="sponsor-level-ajax-<?php echo $row_sponsors['id']; ?>" data-width="auto" onchange="save_column('<?php echo $ajax_url; ?>','sponsorLevel','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-level-ajax-<?php echo $row_sponsors['id']; ?>','value')">
           <option value="1" <?php if ($row_sponsors['sponsorLevel'] == "1") echo " SELECTED"; ?>>1</option>
           <option value="2" <?php if ($row_sponsors['sponsorLevel'] == "2") echo " SELECTED"; ?>>2</option>
           <option value="3" <?php if ($row_sponsors['sponsorLevel'] == "3") echo " SELECTED"; ?>>3</option>
@@ -136,7 +136,7 @@ $(document).ready(function () {
   <td>  
     <?php if (!$empty) { ?>
     <div class="form-group" id="sponsor-image-ajax-<?php echo $row_sponsors['id']; ?>-sponsorImage-form-group">
-      <select class="selectpicker" name="sponsorImage<?php echo $row_sponsors['id']; ?>" id="sponsor-image-ajax-<?php echo $row_sponsors['id']; ?>" data-live-search="true" data-size="10" data-width="auto" onchange="save_column('<?php echo $base_url; ?>','sponsorImage','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-image-ajax-<?php echo $row_sponsors['id']; ?>','value')">
+      <select class="selectpicker" name="sponsorImage<?php echo $row_sponsors['id']; ?>" id="sponsor-image-ajax-<?php echo $row_sponsors['id']; ?>" data-live-search="true" data-size="10" data-width="auto" onchange="save_column('<?php echo $ajax_url; ?>','sponsorImage','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-image-ajax-<?php echo $row_sponsors['id']; ?>','value')">
        <?php 
         $sponsor_images_options = "<option></option>";
           foreach ($sponsor_images as $filename) {
@@ -160,7 +160,7 @@ $(document).ready(function () {
   <td>
     <?php if ($dbTable == "default") { ?>
     <div class="form-group" id="sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>-sponsorText-form-group">
-    <textarea class="form-control" id="sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>" name="sponsorText<?php echo $row_sponsors['id']; ?>" rows="2" class="mceNoEditor" onblur="save_column('<?php echo $base_url; ?>','sponsorText','sponsors','<?php echo $row_sponsors['id']; ?>','default','text-col','default','default','sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>','html')"><?php if (!empty($row_sponsors['sponsorText'])) echo $row_sponsors['sponsorText']; ?></textarea>
+    <textarea class="form-control" id="sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>" name="sponsorText<?php echo $row_sponsors['id']; ?>" rows="2" class="mceNoEditor" onblur="save_column('<?php echo $ajax_url; ?>','sponsorText','sponsors','<?php echo $row_sponsors['id']; ?>','default','text-col','default','default','sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>','html')"><?php if (!empty($row_sponsors['sponsorText'])) echo $row_sponsors['sponsorText']; ?></textarea>
       <div>
         <span id="sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>-sponsorText-status"></span>
         <span id="sponsor-text-ajax-<?php echo $row_sponsors['id']; ?>-sponsorText-status-msg"></span>
@@ -171,7 +171,7 @@ $(document).ready(function () {
   <?php if ($dbTable == "default") { ?>
   <td>
     <div class="form-group" id="sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>-sponsorEnable-form-group">
-    <input id="sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>" type="checkbox" name="sponsorEnable<?php echo $row_sponsors['id']; ?>" value="1" <?php if ($row_sponsors['sponsorEnable'] == 1) echo 'CHECKED'; ?> onclick="$(this).attr('value', this.checked ? 1 : 0);save_column('<?php echo $base_url; ?>','sponsorEnable','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>','value')" /><input type="hidden" id="id" name="id[]" value="<?php echo $row_sponsors['id']; ?>" />
+    <input id="sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>" type="checkbox" name="sponsorEnable<?php echo $row_sponsors['id']; ?>" value="1" <?php if ($row_sponsors['sponsorEnable'] == 1) echo 'CHECKED'; ?> onclick="$(this).attr('value', this.checked ? 1 : 0);save_column('<?php echo $ajax_url; ?>','sponsorEnable','sponsors','<?php echo $row_sponsors['id']; ?>','default','default','default','default','sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>','value')" /><input type="hidden" id="id" name="id[]" value="<?php echo $row_sponsors['id']; ?>" />
     <div>
       <span id="sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>-sponsorEnable-status"></span>
       <span id="sponsor-enable-ajax-<?php echo $row_sponsors['id']; ?>-sponsorEnable-status-msg"></span>
@@ -206,7 +206,7 @@ if ($action == "default") { ?>
 <?php } } ?>
 <?php if (($action == "add") || ($action == "edit")) { ?>
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?action=<?php echo $action; ?>&amp;dbTable=<?php echo $sponsors_db_table; ?><?php if ($action == "edit") echo "&amp;id=".$id; ?>" name="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
     <label for="sponsorName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Name</label>
     <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">

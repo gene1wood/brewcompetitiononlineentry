@@ -6,10 +6,16 @@ if ((!isset($_SESSION['loginUsername'])) || ((isset($_SESSION['loginUsername']))
     $redirect_go_to = sprintf("Location: %s", $redirect);
     header($redirect_go_to);
     exit();
-}
+} 
 
 include (DB.'styles.db.php');
 include (DB.'admin_judging_tables.db.php');
+
+$limits_by_style = FALSE;
+$limits_by_table = FALSE;
+$style_limits_json = json_decode($_SESSION['prefsStyleLimits'],true);
+if ((strlen($_SESSION['prefsStyleLimits']) > 1) && (json_last_error() === JSON_ERROR_NONE)) $limits_by_style = TRUE;
+if ((strlen($_SESSION['prefsStyleLimits']) == 1) && (is_numeric($_SESSION['prefsStyleLimits']))) $limits_by_table = TRUE;
 
 if (strpos($section, "step") === FALSE) {
 
@@ -52,10 +58,11 @@ $orphan_modal_body_2 = "";
 $style_assigned_this = "";
 $all_loc_total = array();
 $mode_alert_color = "alert-teal";
+$table_location_js_cookies = array();
 
-$sub_lead_text_comp_mode = "<div id=\"tables-competition-mode-text\"><strong>Tables Competition Mode </strong> &ndash; to ensure accuracy, verify that all paid and received entries have been marked as such via the <a href=\"".$base_url."index.php?section=admin&amp;go=entries\">Manage Entries</a> screen.</div>";
+$sub_lead_text_comp_mode = "<div id=\"tables-competition-mode-text\"><strong>Your installation is currently in Tables Competition Mode </strong> &ndash; to ensure accuracy, verify that all paid and received entries have been marked as such via the <a href=\"".$base_url."index.php?section=admin&amp;go=entries\">Manage Entries</a> screen.</div>";
     
-$sub_lead_text_plan_mode = "<div id=\"tables-planning-mode-text\"><strong>Tables Planning Mode</strong> &ndash; creating tables, flights, rounds, and associated assignments is not bound by the system default requirement that all entries must be marked as paid and received. Pullsheets are <strong>NOT</strong> available in Tables Planning Mode.</div>";
+$sub_lead_text_plan_mode = "<div id=\"tables-planning-mode-text\"><strong>Your installation is currently in Tables Planning Mode</strong> &ndash; defining tables, flights, rounds, and associated judge/steward assignments is <strong>not</strong> bound by the Tables Competition Mode requirement that all entries must be marked as paid and received. Pullsheets are <strong>not</strong> available in Tables Planning Mode.</div>";
 
 if ($action == "default") {
     $sub_lead_text .= $sub_lead_text_plan_mode.$sub_lead_text_comp_mode;
@@ -81,29 +88,30 @@ if (($action == "default") && ($filter == "default")) {
 
     		$a[] = array();
     		$y[] = array();
-    		$z[] = 0;
+    		$z = 0;
 
     		do {
 
-                if (array_key_exists($row_styles['id'], $styles_selected)) {
+                if (((!empty($styles_selected))) && (!empty($row_styles['id'])) && (array_key_exists($row_styles['id'], $styles_selected))) {
 
                     if (get_table_info($row_styles['brewStyleNum']."^".$row_styles['brewStyleGroup'],"count","default","default","default")) {
+                        
                         if (!get_table_info($row_styles['id'],"styles","default","default","default")) {
                             $a[] = $row_styles['id'];
-                            $z[] = 1;
+                            $z++;
                             $orphan_modal_body_2 .= "<li>";
                             $orphan_modal_body_2 .= style_number_const($row_styles['brewStyleGroup'],$row_styles['brewStyleNum'],$_SESSION['style_set_display_separator'],0).": ";
                             $orphan_modal_body_2 .= $row_styles['brewStyle']." (".get_table_info($row_styles['brewStyleNum']."^".$row_styles['brewStyleGroup'],"count","default",$dbTable,"default")." entries)";
                             $orphan_modal_body_2 .= "</li>";
                         }
+                    
                     }
 
                 }
     			
     		} while ($row_styles = mysqli_fetch_assoc($styles));
 
-            $b = array_sum($z);
-            if ($b == 0) $orphan_modal_body_1 .= "<p>All styles with entries have been assigned to tables.</p>";
+            if ($z == 0) $orphan_modal_body_1 .= "<p>All styles with entries have been assigned to tables.</p>";
             else $orphan_modal_body_1 .= "<p>The following styles with entries have not been assigned to tables:</p>";
 
         }
@@ -178,9 +186,58 @@ if (($action == "default") && ($filter == "default")) {
 
     } while ($row_style_types = mysqli_fetch_assoc($style_types));
 
+    // Get judge availabilities
+    $query_judge_avail = sprintf("SELECT * FROM %s a, %s b WHERE a.brewerJudge='Y' AND b.staff_judge='1' AND a.uid = b.uid;",$prefix."brewer",$prefix."staff");
+    $judge_avail = mysqli_query($connection,$query_judge_avail);
+    $row_judge_avail = mysqli_fetch_array($judge_avail);
+
+    $judge_availability = array();
+    $steward_availability = array();
+    $all_judge_loc_avail_assign_total = array();
+    $all_steward_loc_avail_assign_total = array();
+
+    if ($row_judge_avail) {
+
+        do {
+
+            $judge_availability[] = $row_judge_avail['brewerJudgeLocation'];
+
+        } while($row_judge_avail = mysqli_fetch_array($judge_avail));
+
+        $judge_availability = implode(",",$judge_availability);
+        $judge_availability = explode(",",$judge_availability);
+
+    }
+
+    
+
+    
+
+    $query_steward_avail = sprintf("SELECT * FROM %s a, %s b WHERE a.brewerSteward='Y' AND b.staff_steward='1' AND a.uid = b.uid;",$prefix."brewer",$prefix."staff");
+    $steward_avail = mysqli_query($connection,$query_steward_avail);
+    $row_steward_avail = mysqli_fetch_array($steward_avail);
+
+    if ($row_steward_avail) {
+
+        do {
+
+            $steward_availability[] = $row_steward_avail['brewerStewardLocation'];
+
+        } while($row_steward_avail = mysqli_fetch_array($steward_avail));
+
+        $steward_availability = implode(",",$steward_availability);
+        $steward_availability = explode(",",$steward_availability);
+
+    }
+
+
     do {
 
         $loc_total = 0;
+        $count_steward_avail = 0;
+        $count_judge_avail = 0;
+        $judge_difference = 0;
+        $steward_difference = 0;
 
         if (($row_judging) && ($row_judging['judgingLocType'] < 2)) {
             if ($row_judging) $loc_total = get_table_info(1,"count_total","default","default",$row_judging['id']);
@@ -188,12 +245,37 @@ if (($action == "default") && ($filter == "default")) {
 
             $sidebar_assigned_entries_by_location .= "<div class=\"bcoem-sidebar-panel\">";
             $sidebar_assigned_entries_by_location .= "<strong class=\"text-info\">";
+            //if ($view != $row_judging['id']) $sidebar_assigned_entries_by_location .= sprintf("<a href=\"%sindex.php?section=admin&go=judging_tables&view=%s\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"View only the tables assigned to %s.\">",$base_url,$row_judging['id'],$row_judging['judgingLocName']);
             if ($row_judging) $sidebar_assigned_entries_by_location .= $row_judging['judgingLocName'];
             $sidebar_assigned_entries_by_location .= "</strong>";
+            //if ($view != $row_judging['id']) $sidebar_assigned_entries_by_location .= "</a>";
             $sidebar_assigned_entries_by_location .= "<span class=\"pull-right\">";
             $sidebar_assigned_entries_by_location .= $loc_total;
             $sidebar_assigned_entries_by_location .= "</span>";
-            $sidebar_assigned_entries_by_location .= "</div>";  
+            $sidebar_assigned_entries_by_location .= "</div>";
+
+            $count_judge_yes = "Y-".$row_judging['id'];
+            $count_judge_avail = array_count_values($judge_availability);
+            if ((!empty($count_judge_avail)) && (array_key_exists($count_judge_yes,$count_judge_avail))) $count_judge_avail = $count_judge_avail[$count_judge_yes];
+            
+            $count_steward_yes = "Y-".$row_judging['id'];
+            $count_steward_avail = array_count_values($steward_availability);
+            if ((!empty($count_steward_avail)) && (array_key_exists($count_steward_yes,$count_steward_avail))) $count_steward_avail = $count_steward_avail[$count_steward_yes];
+            
+            $query_judge_loc_assign = sprintf("SELECT COUNT(*) AS count FROM %s WHERE assignment='J' AND assignLocation='%s'",$prefix."judging_assignments",$row_judging['id']);
+            $judge_loc_assign = mysqli_query($connection,$query_judge_loc_assign);
+            $row_judge_loc_assign = mysqli_fetch_array($judge_loc_assign);
+
+            $query_steward_loc_assign = sprintf("SELECT COUNT(*) AS count FROM %s WHERE assignment='S' AND assignLocation='%s'",$prefix."judging_assignments",$row_judging['id']);
+            $steward_loc_assign = mysqli_query($connection,$query_steward_loc_assign);
+            $row_steward_loc_assign = mysqli_fetch_array($steward_loc_assign);
+
+            if ((is_numeric($count_judge_avail)) && ($count_judge_avail > 0)) $judge_difference = ($count_judge_avail - $row_judge_loc_assign['count']);
+            if ((is_numeric($count_steward_avail)) && ($count_steward_avail > 0)) $steward_difference = ($count_steward_avail - $row_steward_loc_assign['count']);
+
+            $all_judge_loc_avail_assign_total[$row_judging['id']] = array('location_total_available' => $count_judge_avail,'location_total_assigned' => $row_judge_loc_assign['count'], "location_available" => $judge_difference);
+            $all_steward_loc_avail_assign_total[$row_judging['id']] = array('location_total_available' => $count_steward_avail,'location_total_assigned' => $row_steward_loc_assign['count'], "location_available" => $steward_difference);
+
         }
         
 
@@ -207,6 +289,16 @@ if (($action == "default") && ($filter == "default")) {
             $styles = display_array_content($a,1);
             $received = get_table_info("1","count_total",$row_tables['id'],$dbTable,"default");
             $scored =  get_table_info("1","score_total",$row_tables['id'],$dbTable,"default");
+            $table_location = table_location($row_tables['id'],$_SESSION['prefsDateFormat'],$_SESSION['prefsTimeZone'],$_SESSION['prefsTimeFormat'],"default");
+
+            $table_location_class = strtolower($table_location);
+            $table_location_class = preg_replace('/[^a-zA-Z0-9\s]/', '', $table_location_class);
+            $table_location_class = str_replace([',','-',' ', ':', '*'], '-', $table_location_class);
+
+            $steward_avail = 0;
+            $judge_avail = 0;
+            if ($all_steward_loc_avail_assign_total[$row_tables['tableLocation']]['location_available'] > 0) $steward_avail = $all_steward_loc_avail_assign_total[$row_tables['tableLocation']]['location_available'];
+            if ($all_judge_loc_avail_assign_total[$row_tables['tableLocation']]['location_available'] > 0) $judge_avail = $all_judge_loc_avail_assign_total[$row_tables['tableLocation']]['location_available'];  
             
             if ($dbTable == "default") {
 
@@ -222,26 +314,33 @@ if (($action == "default") && ($filter == "default")) {
                 
 
             $assigned_judges = assigned_judges($row_tables['id'],$dbTable,$judging_assignments_db_table);
-                if ($dbTable == "default") $assigned_judges .= "<button class=\"btn-link\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Delete all judge assignments for this table.\" onclick=\"purge_data('".$base_url."','purge','judge-assignments','table-admin','delete-judges-".$row_tables['id']."');\"><i class=\"text-danger fas fa-lg fa-minus-circle\"></i></button><div><span class=\"hidden\" id=\"delete-judges-".$row_tables['id']."-status\"></span><span class=\"hidden\" id=\"delete-judges-".$row_tables['id']."-status-msg\"></span></div>";
+                if ($dbTable == "default") $assigned_judges .= "<button class=\"btn-link\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Delete all judge assignments for this table.\" onclick=\"purge_data('".$ajax_url."','purge','judge-assignments','table-admin','delete-judges-".$row_tables['id']."','delete-judges-".$table_location_class."');\"><i class=\"text-danger fas fa-lg fa-minus-circle\"></i></button><div><span class=\"hidden\" id=\"delete-judges-".$row_tables['id']."-status\"></span><span class=\"hidden\" id=\"delete-judges-".$row_tables['id']."-status-msg\"></span></div>";
             
             $assigned_stewards = assigned_stewards($row_tables['id'],$dbTable,$judging_assignments_db_table);
-                if ($dbTable == "default") $assigned_stewards .= "<button class=\"btn-link\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Delete all steward assignments for this table.\" onclick=\"purge_data('".$base_url."','purge','steward-assignments','table-admin','delete-stewards-".$row_tables['id']."');\"><i class=\"text-danger fas fa-lg fa-minus-circle\"></i></button><div><span class=\"hidden\" id=\"delete-stewards-".$row_tables['id']."-status\"></span><span class=\"hidden\" id=\"delete-stewards-".$row_tables['id']."-status-msg\"></span></div>";
+                if ($dbTable == "default") $assigned_stewards .= "<button class=\"btn-link\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Delete all steward assignments for this table.\" onclick=\"purge_data('".$ajax_url."','purge','steward-assignments','table-admin','delete-stewards-".$row_tables['id']."','delete-stewards-".$table_location_class."');\"><i class=\"text-danger fas fa-lg fa-minus-circle\"></i></button><div><span class=\"hidden\" id=\"delete-stewards-".$row_tables['id']."-status\"></span><span class=\"hidden\" id=\"delete-stewards-".$row_tables['id']."-status-msg\"></span></div>";
 
             if ($dbTable == "default") {
                 if (score_count($row_tables['id'],1,$dbTable)) $scoreAction = "edit";
                 else $scoreAction = "add";
             }
 
+
             $manage_tables_default_tbody .= "<tr>";
             $manage_tables_default_tbody .= "<td>".$row_tables['tableNumber']."</td>";
             $manage_tables_default_tbody .= "<td>".$row_tables['tableName']."</td>";
             $manage_tables_default_tbody .= "<td>".rtrim($styles, ",&nbsp;")."</td>";
             $manage_tables_default_tbody .= "<td>".$received."</td>";
+            if ($limits_by_table) $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".$row_tables['tableEntryLimit']."</td>";
             $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".$scored."</td>";
-            $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".$assigned_judges."</td>";
-            $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".$assigned_stewards."</td>";
-            if (($totalRows_judging > 1) && ($dbTable == "default")) $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".table_location($row_tables['id'],$_SESSION['prefsDateFormat'],$_SESSION['prefsTimeZone'],$_SESSION['prefsTimeFormat'],"default")."</td>";
+            $manage_tables_default_tbody .= "\n\n<td class=\"hidden-xs hidden-sm\">".$assigned_judges."<div class=\"text-muted small\">[<span id=\"delete-judges-".$row_tables['id']."-all-count\" class=\"delete-judges-".$table_location_class."\">".$judge_avail."</span> available]</div></td>";
+            $manage_tables_default_tbody .= "\n\n<td class=\"hidden-xs hidden-sm\">".$assigned_stewards."<div class=\"text-muted small\">[<span id=\"delete-stewards-".$row_tables['id']."-all-count\" class=\"delete-stewards-".$table_location_class."\">".$steward_avail."</span> available]</div></td>";
+            if (($totalRows_judging > 1) && ($dbTable == "default")) $manage_tables_default_tbody .= "<td class=\"hidden-xs hidden-sm\">".$table_location."</td>";
             
+
+            // Set js cookies of initial judge / steward available counts for each location
+            $table_location_js_cookies[] .= "Cookies.set('delete-stewards-".$table_location_class."', '".$steward_avail."', { expires: 1 });\n";
+            $table_location_js_cookies[] .= "Cookies.set('delete-judges-".$table_location_class."', '".$judge_avail."', { expires: 1 });\n";
+
             if ($dbTable == "default") {
                 $manage_tables_default_tbody .= "<td nowrap class=\"hidden-print\">";
 
@@ -255,10 +354,10 @@ if (($action == "default") && ($filter == "default")) {
 
                     if ($_SESSION['jPrefsTablePlanning'] == 0) {
                         // Build print pullsheet link
-                        $manage_tables_default_tbody .= "<a data-fancybox data-type=\"iframe\" class=\"modal-window-link hide-loader\" href=\"".$base_url."includes/output.inc.php?section=pullsheets&amp;go=judging_tables&amp;id=".$row_tables['id']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Print the pullsheet for Table ".$row_tables['tableNumber'].": ".$row_tables['tableName']."\">";
+                        if ($_SESSION['prefsDisplaySpecial'] == "J") $manage_tables_default_tbody .= "<a data-fancybox data-type=\"iframe\" class=\"modal-window-link hide-loader\" href=\"".$base_url."includes/output.inc.php?section=pullsheets&amp;go=judging_tables&amp;id=".$row_tables['id']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Print the pullsheet by Judging Numbers for Table ".$row_tables['tableNumber'].": ".$row_tables['tableName']."\">";
+                        else $manage_tables_default_tbody .= "<a data-fancybox data-type=\"iframe\" class=\"modal-window-link hide-loader\" href=\"".$base_url."includes/output.inc.php?section=pullsheets&amp;go=judging_tables&amp;view=entry&amp;id=".$row_tables['id']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Print the pullsheet by Entry Numbers for Table ".$row_tables['tableNumber'].": ".$row_tables['tableName']."\">";
                         $manage_tables_default_tbody .= "<span class=\"fa fa-lg fa-print\"></span>";
                         $manage_tables_default_tbody .= "</a> ";
-
                     }
 
                     else $manage_tables_default_tbody .= "<span class=\"fa fa-lg fa-print text-muted\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Printing pullsheest is disabled in Tables Planning Mode\"></span> ";
@@ -302,8 +401,6 @@ if (($action == "default") && ($filter == "default")) {
                 $manage_tables_default_tbody .= "</td>";
             }
 
-            $manage_tables_default_tbody .= "";
-            $manage_tables_default_tbody .= "";
             $manage_tables_default_tbody .= "</tr>";
 
         } while ($row_tables = mysqli_fetch_assoc($tables));
@@ -349,26 +446,24 @@ if (($action == "add") || ($action == "edit")) {
 
         if ($action == "edit") {
 
-            $query_current_table_styles = sprintf("SELECT * FROM %s WHERE id='%s'",$judging_tables_db_table,$id);
-            $current_table_styles = mysqli_query($connection,$query_current_table_styles) or die (mysqli_error($connection));
-            $row_current_table_styles = mysqli_fetch_assoc($current_table_styles);
-
+            $db_conn->where("id", $id);
+            $row_current_table_styles = $db_conn->getOne($judging_tables_db_table);
             $current_table_styles_array = explode(",",$row_current_table_styles['tableStyles']);
 
         }
 
-        $query_all_table_styles = sprintf("SELECT * FROM %s",$judging_tables_db_table);
-        $all_table_styles = mysqli_query($connection,$query_all_table_styles) or die (mysqli_error($connection));
-        $row_all_table_styles = mysqli_fetch_assoc($all_table_styles);
-        $totalRows_all_table_styles = mysqli_num_rows($all_table_styles);
+
+        $db_conn->returnType = "array"; 
+        $row_all_table_styles = $db_conn->get($judging_tables_db_table);
+        $totalRows_all_table_styles = $db_conn->count;
 
         // Get the table numbers and sub-style ids from the tables that have been defined and put into arrays
         if ($totalRows_all_table_styles > 0) {
 
-            do {
+            foreach ($row_all_table_styles as $row_all_table_styles) {
                 $all_table_styles_concat .= $row_all_table_styles['tableStyles'].",";
                 $all_table_numbers_array[] =  $row_all_table_styles['tableNumber'];
-            } while ($row_all_table_styles = mysqli_fetch_assoc($all_table_styles));
+            }
 
             $all_table_styles_concat = rtrim($all_table_styles_concat,",");
             $all_table_styles_array = explode(",",$all_table_styles_concat);
@@ -404,8 +499,7 @@ if (($action == "add") || ($action == "edit")) {
                 $table_locations_available .= "<option value=\"".$row_judging['id']."\"".$selected_table_location.">";
                 $table_locations_available .= $row_judging['judgingLocName']." (".getTimeZoneDateTime($_SESSION['prefsTimeZone'], $row_judging['judgingDate'], $_SESSION['prefsDateFormat'],  $_SESSION['prefsTimeFormat'], "short", "date-time-no-gmt").")";
                 $table_locations_available .= "</option>\n";
-            }
-            
+            }            
 
         } while ($row_judging = mysqli_fetch_assoc($judging));
 
@@ -426,9 +520,12 @@ if (($action == "add") || ($action == "edit")) {
                 $style_sort = style_number_const($row_styles['brewStyleGroup'],$row_styles['brewStyleNum'],$_SESSION['style_set_display_separator'],1);
 
                 if ($received_entry_count_style == 0) {
-                    $disabled_styles = "DISABLED";
-                    $style_no_entries = "<br><em>Disabled. No entries were received for this style.</em>";
-                    $table_row_class = "bg-grey text-muted";
+                    if ($_SESSION['jPrefsTablePlanning'] == 0) {
+                        $disabled_styles = "DISABLED";
+                        $style_no_entries = "<br><em>Disabled. No entries were received for this style.</em>";
+                        $table_row_class = "bg-grey text-muted";
+                    }
+                    else $table_row_class = "";
                 }
 
                 if (($action == "edit") && (in_array($row_styles['id'],$current_table_styles_array))) $style_assigned_location = "<br><em>Style currently assigned to this table.</em>";
@@ -477,166 +574,48 @@ if (($action == "add") || ($action == "edit")) {
     
     }
 
-    
-
 } // end if (($action == "add") || ($action == "edit"))
 
 if ($action == "default") {
 ?>
 <script type="text/javascript">
 
-/*
- * Function with an ajax call to convert 
- * all records in the judging_assignments 
- * and judging_flights tables to 1 (planning).
- */
-function enable_planning_mode() {
+// Set cookies of the number of judges/stewards that are available for each table.
+// These are set be used in case all assignments are cleared via ajax.
+<?php
+$table_location_js_cookies = array_unique($table_location_js_cookies);
+foreach ($table_location_js_cookies as $value) {
+    echo $value;
+} 
+?>
 
-    var ajax_url = "<?php echo $ajax_url; ?>";
-    
-    jQuery.ajax({
-        
-        url: ajax_url+"tables_mode.ajax.php?section=enable-planning",
-
-        success:function(data) {
-            
-            var jsonData = JSON.parse(data);
-            console.log(jsonData.status);
-            
-            if (jsonData.status === "1") {
-
-                $("#competition-mode-status").hide();
-                $("#competition-mode-status-text").html("Tables Planning Mode loaded successfully. Refreshing the page...");
-                $("#competition-mode-status-icon").attr("class", "small text-success");
-                $("#competition-mode-status-icon").attr("class", "fa fa-check-circle text-success");
-                $("#competition-mode-status").show().delay(5000).hide("fast");
-                $('#loader-submit').show(0).delay(30000).hide(0);
-
-                // Refresh to get updated numbers
-                window.location.reload(true);
-                
-            }
-            
-            else if (jsonData.status === "2") {
-
-                $("#competition-mode-status").hide();
-                $("#competition-mode-status-text").html("Tables Planning Mode was not loaded successfully.");
-                $("#competition-mode-status-icon").attr("class", "small text-danger");
-                $("#competition-mode-status-icon").attr("class", "fa fa-exclamation-circle text-warning");
-                $("#competition-mode-status").show().delay(5000).hide("fast");
-
-            }
-
-            else {
-
-                $("#competition-mode-status").hide();
-                $("#competition-mode-status-text").html("There was an error.");
-                $("#competition-mode-status-icon").attr("class", "small text-danger");
-                $("#competition-mode-status-icon").attr("class", "fa fa-exclamation-circle text-warning");
-                $("#competition-mode-status").show().delay(5000).hide("fast");
-            
-            }
-        
-        },
-
-        error:function() {
-            console.log('Error');
-        }
-
-    });
-
-}
-
-/*
- * Function with an ajax call to check all 
- * records in the judging_flights DB table
- * to verify if each relational record
- * has been marked as received in the brewing 
- * DB table. If so, retain in judging_flights. 
- * If not, delete.
- * Also converts all records in the
- * judging_assignments table to 0 (production).
- */
-
-function enable_competition_mode() {
-
-    var ajax_url = "<?php echo $ajax_url; ?>";
-
-    jQuery.ajax({
-        
-        url: ajax_url+"tables_mode.ajax.php?section=enable-competition",
-
-        success:function(data) {
-            
-            var jsonData = JSON.parse(data);
-            console.log(jsonData.status);
-            
-            if (jsonData.status === "1") {
-
-                $("#planning-mode-status").hide();
-                $("#planning-mode-status-text").html("Tables Competition Mode loaded successfully. Refreshing the page...");
-                $("#planning-mode-status-icon").attr("class", "small text-success");
-                $("#planning-mode-status-icon").attr("class", "fa fa-check-circle text-success");
-                $("#planning-mode-status").show().delay(5000).hide("fast");
-                $('#loader-submit').show(0).delay(30000).hide(0);
-                
-                // Refresh to get updated numbers
-                window.location.reload(true);
-                
-            }
-            
-            else if (jsonData.status === "2") {
-
-                $("#planning-mode-status").hide();
-                $("#planning-mode-status-text").html("Tables Competition Mode was not loaded successfully.");
-                $("#planning-mode-status-icon").attr("class", "small text-danger");
-                $("#planning-mode-status-icon").attr("class", "fa fa-exclamation-circle text-danger");
-                $("#planning-mode-status").show().delay(5000).hide("fast");
-
-            }
-
-            else {
-                
-                $("#planning-mode-status").hide();
-                $("#competition-mode-status-text").html("There was an error.");
-                $("#planning-mode-status-icon").attr("class", "small text-danger");
-                $("#planning-mode-status-icon").attr("class", "fa fa-exclamation-circle text-danger");
-                $("#planning-mode-status").show().delay(5000).hide("fast");
-
-            }
-        
-        },
-
-        error:function() {
-            console.log('Error');
-        }
-
-    });
-
-}
+var admin_function = "<?php echo $go; ?>";
+var prefs_planning = "<?php echo $_SESSION['jPrefsTablePlanning']; ?>";
+var judge_unassign_flag = "<?php if ((isset($_SESSION['judge_unassign_flag'])) && ($_SESSION['judge_unassign_flag'] == 1)) { echo "1"; $_SESSION['judge_unassign_flag'] = 0; } else echo "0"; ?>";
+var ajax_url = "<?php echo $ajax_url; ?>";
 
 $(document).ready(function(){
 
     // If judges and/or stewards have been un-assigned, trigger modal.
-    <?php if ((isset($_SESSION['judge_unassign_flag'])) && ($_SESSION['judge_unassign_flag'] == 1)) { ?>
+    if (judge_unassign_flag == 1) {
         $('#unassigned-modal').modal('show');
-    <?php $_SESSION['judge_unassign_flag'] = 0; } ?>
+    }
     
-    <?php if ($_SESSION['jPrefsTablePlanning'] == 0) { ?>
+    if (prefs_planning == 0) {
 
-    $("#tables-competition-mode").hide();
-    $("#mode-alert").attr("class", "alert alert-teal");
-    $("#tables-planning-mode-text").hide();
+        $("#tables-competition-mode").hide();
+        $("#mode-alert").attr("class", "alert alert-teal");
+        $("#tables-planning-mode-text").hide();
     
-    <?php } ?>
+    }
 
-    <?php if ($_SESSION['jPrefsTablePlanning'] == 1) { ?>
+    if (prefs_planning == 1) {
 
-    $("#tables-planning-mode").hide();
-    $("#mode-alert").attr("class", "alert alert-purple");
-    $("#tables-competition-mode-text").hide();
+        $("#tables-planning-mode").hide();
+        $("#mode-alert").attr("class", "alert alert-purple");
+        $("#tables-competition-mode-text").hide();
     
-    <?php } ?>
+    }
 
     $("#table-planning-button").click(function(){ 
 
@@ -650,7 +629,7 @@ $(document).ready(function(){
         $("#competition-mode-status-icon").attr("class", "fa fa-cog fa-spin text-grey");
         $("#competition-mode-status").show(); 
 
-        enable_planning_mode(); 
+        enable_planning_mode(ajax_url,admin_function); 
         
     });
 
@@ -670,7 +649,7 @@ $(document).ready(function(){
         $("#planning-mode-status-icon").attr("class", "fa fa-cog fa-spin text-grey");
         $("#planning-mode-status").show();
         
-        enable_competition_mode();
+        enable_competition_mode(ajax_url,admin_function);
     });
 
 });
@@ -685,23 +664,23 @@ $(document).ready(function(){
                 <h4 class="modal-title">Please Confirm</h4>
             </div>
             <div class="modal-body">
-                <p>Are you sure you want to switch to Tables Competition Mode? This should only be done after <strong>all</strong> entries have been sorted and those present are <strong>marked as received in the system</strong>.</p>
-                <p>Before you do, take note that in Tables Competition Mode:</p>
+                <p>Are you sure you want to switch to Tables Competition Mode? This should only be done after <strong>all</strong> entries have been sorted and those present are <strong>marked as <u>received</u> in the system</strong>.</p>
+                <p>Before you do, take note that, after switching to Tables Competition Mode:</p>
                 <ul>
-                    <li>Table entry counts will only reflect entries marked as received.</li>
+                    <li>Table entry counts will only reflect entries marked as <strong>received</strong>.</li>
                     <li>Non-received entries' flight designations will be reset to 1 (default) should any be marked as received after switching to Competition Mode. Flight positions and associated rounds should be reviewed prior to judging.</li>
-                    <li>If there are no entries marked as received for a particular sub-style, the sub-style will be removed from the table's styles list.</li>
-                    <li>If there are no entries marked as received for all sub-styles defined for a table, that table will be deleted.</li>
-                    <li>Judges and stewards that now have entries at a table where they are assigned will be un-assigned from that table as a failsafe.</li>
+                    <li>If there are no entries marked as received for a particular sub-style, the <strong>sub-style will be removed</strong> from the table's styles list.</li>
+                    <li>If there are no entries marked as received for <strong>all</strong> sub-styles defined for a table, <strong>that table will be deleted</strong>.</li>
+                    <li>Judges and stewards that have entries at a table where they are assigned will be un-assigned from that table as a failsafe.</li>
                 </ul>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
                 <button id="tables-competition-button-yes" type="button" class="btn btn-success">Yes</button>
             </div>
-        </div><!-- /.modal-content -->
-    </div><!-- /.modal-dialog -->
-</div><!-- /.modal -->
+        </div>
+    </div>
+</div>
 
 
 <!-- Delete assignments modals -->
@@ -717,7 +696,7 @@ $(document).ready(function(){
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-success" data-dismiss="modal" onclick="purge_data('<?php echo $base_url; ?>','','tables','admin-dashboard','purge-table');">Yes</button>
+            <button type="button" class="btn btn-success" data-dismiss="modal" onclick="purge_data('<?php echo $ajax_url; ?>','','tables','admin-dashboard','purge-table');">Yes</button>
         </div>
         </div>
     </div>
@@ -734,7 +713,7 @@ $(document).ready(function(){
         </div>
         <div class="modal-footer">
             <button type="button" class="btn btn-danger" data-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-success" data-dismiss="modal" onclick="purge_data('<?php echo $base_url; ?>','','tables','admin-dashboard','purge-table');">Yes</button>
+            <button type="button" class="btn btn-success" data-dismiss="modal" onclick="purge_data('<?php echo $ajax_url; ?>','','tables','admin-dashboard','purge-table');">Yes</button>
         </div>
         </div>
     </div>
@@ -765,10 +744,10 @@ $(document).ready(function(){
 <?php if ($action == "default") { ?>
 <!-- Planning Mode Button -->
 <div id="tables-planning-mode" class="bcoem-admin-element hidden-print">
-    <button id="table-planning-button" class="btn btn-warning"><span class="fa fa-exchange"></span> Switch to Tables Planning Mode</button> <a href="#" data-toggle="popover" title="Tables Planning Mode" data-content="<p>When the Tables Planning Mode function is enabled, Admins can define tables, flights, rounds, and judge/steward assignments prior to entries being marked as paid and/or received (i.e., prior to sorting).</p><p>Any table configurations and associated assignments <strong>will not be official</strong> until an Admin returns to Tables Competition Mode after entries have been sorted and marked as received in the system. Pullsheets will <strong>not</strong> be available.</p>" data-trigger="hover click" data-placement="right" data-html="true" data-container="body"><i class="fa fa-lg fa-question-circle"></i></a>  <span id="planning-mode-status"><i id="planning-mode-status-icon" class=""></i> <span id="planning-mode-status-text" class="small"></span></span>
+    <button id="table-planning-button" class="btn btn-primary"><span class="fa fa-exchange"></span> Switch to Tables <strong>Planning</strong> Mode</button> <a href="#" data-toggle="popover" title="Tables Planning Mode" data-content="<p>When the Tables Planning Mode function is enabled, Admins can define tables, flights, rounds, judge/steward assignments, and, as of version 3.0.0 <strong>if enabled in Entry Preferences</strong>, associated entry limits <strong>prior</strong> to entries being marked as paid and/or received (i.e., prior to sorting).</p><p>Any table configurations and associated assignments <strong>will not be official</strong> until an Admin returns to Tables Competition Mode after entries have been sorted and marked as received in the system. Pullsheets will <strong>not</strong> be available.</p>" data-trigger="hover click" data-placement="right" data-html="true" data-container="body"><i class="fa fa-lg fa-question-circle"></i></a>  <span id="planning-mode-status"><i id="planning-mode-status-icon" class=""></i> <span id="planning-mode-status-text" class="small"></span></span>
 </div>
 <div id="tables-competition-mode" class="bcoem-admin-element hidden-print">
-    <button id="tables-competition-button" class="btn btn-success"><span class="fa fa-exchange"></span> Switch to Tables Competition Mode</button> <a href="#" data-toggle="popover" title="Tables Competition Mode" data-content="<p>When the Tables Competition Mode function is enabled by an admin, it indicates to the system that the planning stage is over (i.e., sorting is finished and all applicable entries have been marked as paid and received).</p><p>Table configurations and assignments can still be changed as necessary while in Competition Mode. Pullsheets will be available.</p>" data-trigger="hover click" data-placement="right" data-html="true" data-container="body"><i class="fa fa-lg fa-question-circle"></i></a> <span id="competition-mode-status"><i id="competition-mode-status-icon" class=""></i> <span id="competition-mode-status-text" class="small"></span></span>
+    <button id="tables-competition-button" class="btn btn-primary"><span class="fa fa-exchange"></span> Switch to Tables <strong>Competition</strong> Mode</button> <a href="#" data-toggle="popover" title="Tables Competition Mode" data-content="<p>When the Tables Competition Mode function is enabled by an admin, it indicates to the system that the planning stage is over  and <strong>all applicable entries have been marked as <u>received</u></strong>.</p><p>Table configurations and assignments can still be changed as necessary while in Competition Mode. Pullsheets will be available.</p>" data-trigger="hover click" data-placement="right" data-html="true" data-container="body"><i class="fa fa-lg fa-question-circle"></i></a> <span id="competition-mode-status"><i id="competition-mode-status-icon" class=""></i> <span id="competition-mode-status-text" class="small"></span></span>
 </div>
 <?php } ?>
 <?php if (($_SESSION['prefsEval'] == 1) && ($dbTable == "default")) include (EVALS.'import_scores.eval.php'); ?>
@@ -779,20 +758,20 @@ $(document).ready(function(){
     <!-- Postion 1: View All Button -->
     <div class="btn-group" role="group" aria-label="archives">
         <a class="btn btn-default" href="<?php echo $base_url; ?>index.php?section=admin&amp;go=archive"><span class="fa fa-arrow-circle-left"></span> Archives</a>
-    </div><!-- ./button group -->
+    </div>
 	<?php } ?>
     <?php if ($dbTable == "default") { ?>
 	<?php if (($action != "default") || ($filter != "default")) { ?>
     <!-- Postion 1: View All Button -->
     <div class="btn-group" role="group" aria-label="allTables">
         <a class="btn btn-default" href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_tables"><span class="fa fa-arrow-circle-left"></span> All Tables</a>
-    </div><!-- ./button group -->
+    </div>
     <?php } ?>
     <?php if ($action == "default") { ?>
     <!-- Postion 2: Add Button -->
     <div class="btn-group" role="group" aria-label="addTable">
         <a class="btn btn-default" href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_tables&amp;action=add"><span class="fa fa-plus-circle"></span> Add a Table</a>
-    </div><!-- ./button group -->
+    </div>
     <?php } ?>
 	<!-- View Button Group Dropdown -->
     <div class="btn-group" role="group">
@@ -808,7 +787,7 @@ $(document).ready(function(){
             <li class="small"><a href="#" data-toggle="modal" data-target="#availJudgeModal">Judges Not Assigned to a Table</a></li>
             <li class="small"><a href="#" data-toggle="modal" data-target="#availStewardModal">Stewards Not Assigned to a Table</a></li>
         </ul>
-    </div><!-- ./button group -->
+    </div>
 	<?php if ($action == "default") { ?>
 	<!-- Postion 4: Print Button Dropdown Group -->
     <div class="btn-group hidden-xs hidden-sm" role="group">
@@ -921,9 +900,10 @@ $(document).ready(function() {
 						<div id="collapseStep1" class="panel-collapse collapse">
 							<div class="panel-body">
 								<ul class="list-unstyled">
-                                	<li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;action=assign&amp;go=judging&amp;filter=judges">Assign Judges</a></li>
-            						<li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;action=assign&amp;go=judging&amp;filter=stewards">Assign Stewards</a></li>
+                                	<li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;action=assign&amp;go=judging&amp;filter=judges">Assign/Unassign Judges</a></li>
+            						<li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;action=assign&amp;go=judging&amp;filter=stewards">Assign/Unassign Stewards</a></li>
                                 </ul>
+                                <div class="alert alert-info small" style="margin-bottom: 0;">Note: As of version 3.0.0, judges and stewards are automatically assigned to their respective pools upon registration <strong>providing they registered as one or the other.</strong> Those who first signed up as participants, but then edited their accounts to indicate their availability to judge or steward are not automatically assigned.</div>
 							</div>
 						</div>
 					</div><!-- ./accordion -->
@@ -1014,7 +994,7 @@ $(document).ready(function() {
 						<div id="collapseStep6" class="panel-collapse collapse">
 							<div class="panel-body">
 								<ul class="list-unstyled">
-                                	<?php if ($_SESSION['prefsEval'] == 1) { ?><li><a href="<?php echo $base_url; ?>index.php?section=evaluation&amp;go=default&amp;filter=default&amp;view=admin" data-toggle="tooltip" data-placement="top" title="Manage, View and Edit Judges' evaluations of received entries">Manage Entry Evaluations</a></li>
+                                	<?php if ($_SESSION['prefsEval'] == 1) { ?><li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=evaluation&amp;filter=default&amp;view=admin" data-toggle="tooltip" data-placement="top" title="Manage, View and Edit Judges' evaluations of received entries">Manage Entry Evaluations</a></li>
                                     <li><?php echo $import_scores_display; ?></li>
                                     <?php } ?>
                                     <li><a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_scores">All Scores</a></li>
@@ -1065,7 +1045,10 @@ $(document).ready(function() {
                     <hr>
                 </div>
                 <div class="bcoem-sidebar-panel">
-                	<strong class="text-info">All Judging Sessions</strong>
+                	<strong class="text-info">
+                        <?php if ($view != "default") echo sprintf("<a href=\"%sindex.php?section=admin&amp;go=judging_tables\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"View all tables.\">All Judging Sessions</a>",$base_url); else echo "All Judging Sessions"; ?>
+                    
+                    </strong>
                     <span class="pull-right"><?php echo array_sum($all_loc_total); if ($_SESSION['jPrefsTablePlanning'] == 0) { ?> of <a href="<?php echo $base_url; ?>/index.php?section=admin&amp;go=entries" data-toggle="tooltip" data-placement="top" title="View all entries."><?php echo $row_entry_count['count']; ?></a><?php } ?></span>
                 </div>
                 <?php } ?>
@@ -1186,7 +1169,7 @@ if ($totalRows_tables > 0) { ?>
  $(document).ready(function() {
 	$('#judgingTables').dataTable( {
 		"bPaginate" : false,
-		"sDom": 'rst',
+		"sDom": 'fprtp',
 		"bStateSave" : false,
 		"bLengthChange" : false,
 		"aaSorting": [[0,'asc']],
@@ -1199,6 +1182,7 @@ if ($totalRows_tables > 0) { ?>
 			null,
 			null,
 			null,
+            <?php if ($limits_by_table) { ?>null,<?php } ?>
 			<?php if (($totalRows_judging > 1) && ($dbTable == "default"))  { ?>null,<?php } ?>
 			<?php if ($dbTable == "default") { ?>{ "asSorting": [  ] }<?php } ?>
 			]
@@ -1212,7 +1196,10 @@ if ($totalRows_tables > 0) { ?>
         <th>Name</th>
         <th>Style(s)</th>
         <th><?php if ($_SESSION['jPrefsTablePlanning'] == 0) echo "<span class=\"hidden-sm hidden-xs\"><em>Rec'd</em> </span>" ; ?>Entries</th>
-        <th class="hidden-xs hidden-sm"><em>Scored</em> Entries</th>
+        <?php if ($limits_by_table) { ?>
+        <th nowrap="nowrap" class="hidden-xs hidden-sm">Entry Limit<a id="tables-planning-mode-help" class="padding-left: 5px;" href="#" data-toggle="popover" title="Table/Medal Group Entry Limit" data-content="<p>This entry limit will only be available for editing and enforced while:<ul style='margin-left:2px;'><li>Entries are being accepted.</li><li>Tables Planning Mode is enabled.</li><ul></p>" data-trigger="hover click" data-placement="right" data-html="true" data-container="body"><i style="margin-left: 5px" class="fa fa-question-circle"></i></a></th>
+        <?php } ?>
+        <th nowrap="nowrap" class="hidden-xs hidden-sm"><em>Scored</em> Entries</th>
         <th class="hidden-xs hidden-sm">Judge Assignments</th>
         <th class="hidden-xs hidden-sm">Steward Assignments</th>
         <?php if (($totalRows_judging > 1) && ($dbTable == "default"))  { ?>
@@ -1250,6 +1237,13 @@ else {
 }
 </style>
 <script type="text/javascript">
+
+var tables_planning_mode = "<?php if ((isset($_SESSION['jPrefsTablePlanning'])) && ($_SESSION['jPrefsTablePlanning'] == 1)) echo "true"; else echo "false"; ?>";
+
+if (!tables_planning_mode) {
+    $("#add-table-submit").prop('disabled', true);
+}
+
 function update_table_total(element_id) {
 
     // Get current total value
@@ -1284,12 +1278,16 @@ function update_table_total(element_id) {
 
     }
 
-    if (overall_total == 0) {
-        $("#add-table-submit").prop('disabled', true);
-    }
+    if (!tables_planning_mode) {
 
-    if (overall_total > 0) {
-        $("#add-table-submit").removeAttr('disabled');
+        if (overall_total == 0) {
+            $("#add-table-submit").prop('disabled', true);
+        }
+
+        if (overall_total > 0) {
+            $("#add-table-submit").prop('disabled', false);
+        }
+
     }
 
 }  
@@ -1319,10 +1317,11 @@ function update_table_total(element_id) {
 		} );
 	} );
 </script>
+
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $section; ?>&amp;action=<?php echo $action; ?>&amp;dbTable=<?php echo $judging_tables_db_table; ?>&amp;go=<?php echo $go; ?>" name="form1" id="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="bcoem-admin-element hidden-print">
-    <div class="form-group"><!-- Form Group REQUIRED Text Input -->
+    <div class="form-group">
         <label for="tableName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Name</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
             <div class="input-group has-warning">
@@ -1331,32 +1330,40 @@ function update_table_total(element_id) {
             </div>
             <span class="help-block with-errors"></span>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
 
-    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+    <div class="form-group">
         <label for="tableNumber" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Number</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <!-- Input Here -->
         <select class="selectpicker" name="tableNumber" id="tableNumber" data-size="10" data-width="auto">
             <?php echo $table_numbers_available; ?>
         </select>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
 
-    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+    <div class="form-group">
         <label for="tableLocation" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Location</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <!-- Input Here -->
         <select class="selectpicker" name="tableLocation" id="tableLocation" data-size="10" data-width="auto">
             <?php echo $table_locations_available; ?>
         </select>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
+
+    <?php if (($_SESSION['jPrefsTablePlanning'] == 1) && ($limits_by_table)) { ?>
+    <div class="form-group">
+        <label for="tableEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+            <input class="form-control" id="tableEntryLimit" name="tableEntryLimit" type="number" value="" placeholder="">
+            <div class="help-block with-errors"><strong>Define an overall entry limit for this table/medal group.</strong> This limit will only be available/enforced while entries are being accepted and when Tables Planning Mode is enabled.</div>
+        </div>
+    </div>
+    <?php } ?>
 
     <div class="form-group">
         <label for="tableStyles" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Available Style(s)</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <?php if ($row_entry_count['count'] > 0) { ?>
+        <?php if (((isset($_SESSION['jPrefsTablePlanning'])) && ($_SESSION['jPrefsTablePlanning'] == 1)) || ($row_entry_count['count'] > 0)) { ?>
 			<table class="table table-responsive table-bordered small" id="sortable">
 				<thead>
 				<tr>
@@ -1373,13 +1380,19 @@ function update_table_total(element_id) {
 			</table>
 		<?php } else echo "<p>There are no available sub-styles.</p>"; ?>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
 </div><!-- ./bcoem-admin-element -->
-
+<?php if ($action == "add") { ?>
+<div class="form-group">
+    <div class="col-lg-offset-2 col-md-offset-3 col-sm-offset-3 col-sm-offset-4">
+        <label class="checkbox-inline"><input type="checkbox" name="return-to-add-table" value="1"> Return here to add another table?</label>
+    </div>
+</div>
+<?php } ?>
 <div class="bcoem-admin-element hidden-print">
 	<div class="form-group">
 		<div class="col-lg-offset-2 col-md-offset-3 col-sm-offset-4">
-			<input id="add-table-submit" type="submit" class="btn btn-primary" value="Add Table" disabled>
+			<input id="add-table-submit" type="submit" class="btn btn-primary" value="Add Table">
 		</div>
 	</div>
 </div>
@@ -1413,10 +1426,10 @@ function update_table_total(element_id) {
 	} );
 </script>
 <form class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $section; ?>&amp;action=<?php echo $action; ?>&amp;dbTable=<?php echo $judging_tables_db_table; ?>&amp;go=<?php echo $go."&amp;id=".$row_tables_edit['id']; ?>" name="form1" id="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="bcoem-admin-element hidden-print">
 
-	<div class="form-group"><!-- Form Group REQUIRED Text Input -->
+	<div class="form-group">
         <label for="tableName" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Name</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
             <div class="input-group has-warning">
@@ -1424,30 +1437,38 @@ function update_table_total(element_id) {
                 <span class="input-group-addon" id="tableName-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
             </div>
         </div>
-    </div><!-- ./Form Group -->
-    <div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+    </div>
+    <div class="form-group">
         <label for="tableNumber" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Number</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <!-- Input Here -->
+        
         <select class="selectpicker" name="tableNumber" id="tableNumber" data-size="10" data-width="auto">
             <?php echo $table_numbers_available;  ?>
         </select>
         </div>
-    </div><!-- ./Form Group -->
-	<div class="form-group"><!-- Form Group NOT REQUIRED Select -->
+    </div>
+	<div class="form-group">
         <label for="tableLocation" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Location</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <!-- Input Here -->
+        
         <select class="selectpicker" name="tableLocation" id="tableLocation" data-size="10" data-width="auto">
             <?php echo $table_locations_available; ?>
         </select>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
+    <?php if (((isset($_SESSION['jPrefsTablePlanning'])) && ($_SESSION['jPrefsTablePlanning'] == 1)) && ($limits_by_table)) { ?>
+    <div class="form-group">
+        <label for="tableEntryLimit" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Total Entry Limit</label>
+        <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
+            <input class="form-control" id="tableEntryLimit" name="tableEntryLimit" type="number" value="<?php if (!empty($row_tables_edit['tableEntryLimit'])) echo $row_tables_edit['tableEntryLimit']; ?>" placeholder="" <?php if ($_SESSION['jPrefsTablePlanning'] == 0) echo "disabled"; ?>>
+            <div class="help-block with-errors"><?php if ($_SESSION['jPrefsTablePlanning'] == 0) echo "<strong>Disabled in Tables Competition Mode.</strong> For reference only."; else echo "Define an overall entry limit for this table/medal group.</strong> This limit will only be available/enforced while entries are being accepted and when Tables Planning Mode is enabled."; ?></div>
+        </div>
+    </div>
+    <?php } ?>
     <div class="form-group">
         <label for="tableStyles" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Style(s)</label>
         <div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-        <?php
-		if ($row_entry_count['count'] > 0) { ?>
+        <?php if (((isset($_SESSION['jPrefsTablePlanning'])) && ($_SESSION['jPrefsTablePlanning'] == 1)) || ($row_entry_count['count'] > 0)) { ?>
 			<table class="table table-responsive table-bordered small" id="sortable">
 				<thead>
 				<tr>
@@ -1464,7 +1485,7 @@ function update_table_total(element_id) {
 			</table>
 		<?php } else echo "There are no available sub-styles."; ?>
         </div>
-    </div><!-- ./Form Group -->
+    </div>
 </div>
 <div class="bcoem-admin-element hidden-print">
 	<div class="form-group">
@@ -1560,5 +1581,5 @@ if (($action == "assign") && ($filter == "default")) { ?>
     </ul>
 </div>
 <?php } ?>
-<script src="<?php echo $js_url; ?>admin_ajax.min.js"></script>
+<script src="<?php echo $js_url."admin_ajax.min.js"; ?>"></script>
 <?php if (($action == "assign") && ($filter != "default") && ($id != "default")) include ('judging_assign.admin.php'); ?>

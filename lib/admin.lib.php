@@ -511,17 +511,13 @@ function participant_choose($brewer_db_table,$pro_edition,$judge,$evaluation='0'
 	mysqli_select_db($connection,$database);
 
 	if ($pro_edition == 1) {
-		
 		if (($evaluation == 1) && ($judge == 1)) $query_brewers = "SELECT uid,brewerFirstName,brewerLastName FROM $brewer_db_table WHERE brewerJudge='Y' ORDER BY brewerLastName ASC";
 		else $query_brewers = "SELECT uid,brewerBreweryName FROM $brewer_db_table WHERE brewerBreweryName IS NOT NULL ORDER BY brewerBreweryName ASC";
-
 	}
 	
 	else {
-		
 		if ($judge == 1) $query_brewers = "SELECT uid,brewerFirstName,brewerLastName FROM $brewer_db_table WHERE brewerJudge='Y' ORDER BY brewerLastName ASC";
 		else $query_brewers = "SELECT uid,brewerFirstName,brewerLastName FROM $brewer_db_table ORDER BY brewerLastName ASC";
-	
 	}
 
 	$brewers = mysqli_query($connection,$query_brewers) or die (mysqli_error($connection));
@@ -545,8 +541,8 @@ function participant_choose($brewer_db_table,$pro_edition,$judge,$evaluation='0'
 			}
 
 			else {
-				if ($pro_edition == 1) $output .= "<option value=\"index.php?section=brew&amp;go=entries&amp;bid=".$row_brewers['uid']."&amp;action=add\" data-content=\"<span class='small'>".$row_brewers['brewerBreweryName']."</span>\">".$row_brewers['brewerBreweryName']."</option>";
-				else $output .= "<option value=\"index.php?section=brew&amp;go=entries&amp;bid=".$row_brewers['uid']."&amp;action=add\" data-content=\"<span class='small'>".$row_brewers['brewerLastName'].", ".$row_brewers['brewerFirstName']."</span>\">".$row_brewers['brewerLastName'].", ".$row_brewers['brewerFirstName']."</option>";
+				if ($pro_edition == 1) $output .= "<option value=\"index.php?section=admin&amp;go=entries&amp;action=add&amp;bid=".$row_brewers['uid']."\" data-content=\"<span class='small'>".$row_brewers['brewerBreweryName']."</span>\">".$row_brewers['brewerBreweryName']."</option>";
+				else $output .= "<option value=\"index.php?section=admin&amp;go=entries&amp;action=add&amp;bid=".$row_brewers['uid']."\" data-content=\"<span class='small'>".$row_brewers['brewerLastName'].", ".$row_brewers['brewerFirstName']."</span>\">".$row_brewers['brewerLastName'].", ".$row_brewers['brewerFirstName']."</option>";
 			}
 
 		} while ($row_brewers = mysqli_fetch_assoc($brewers));
@@ -752,7 +748,7 @@ function flight_entry_info($entry_id) {
 	$flight_number = mysqli_query($connection,$query_flight_number) or die (mysqli_error($connection));
 	$row_flight_number = mysqli_fetch_assoc($flight_number);
 	
-	return $row_flight_number['id']."^".$row_flight_number['flightNumber']."^".$row_flight_number['flightEntryID']."^".$row_flight_number['flightRound'];
+	if ($row_flight_number) return $row_flight_number['id']."^".$row_flight_number['flightNumber']."^".$row_flight_number['flightEntryID']."^".$row_flight_number['flightRound'];
 
 }
 
@@ -898,11 +894,8 @@ function received_entries() {
 	
 	$style_array = array();
 
-	/*
-	if (HOSTED) $query_styles = sprintf("SELECT brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') UNION ALL SELECT brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom');", $styles_db_table, $_SESSION['prefsStyleSet'], $prefix."styles", $_SESSION['prefsStyleSet']);
-	else 
-	*/
-	$query_styles = sprintf("SELECT brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom');", $prefix."styles",$_SESSION['prefsStyleSet']);
+	if ($_SESSION['prefsStyleSet'] == "BJCP2025") $query_styles = sprintf("SELECT brewStyle FROM %s WHERE (brewStyleVersion='BJCP2025' AND brewStyleType='2') OR (brewStyleVersion='BJCP2021' AND brewStyleType !='2') OR brewStyleOwn='custom';", $prefix."styles");
+	else $query_styles = sprintf("SELECT brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom');", $prefix."styles",$_SESSION['prefsStyleSet']);
 	$styles = mysqli_query($connection,$query_styles);
 	$row_styles = mysqli_fetch_array($styles);
 
@@ -1257,7 +1250,7 @@ function assign_to_table($tid,$bid,$filter,$total_flights,$round,$location,$tabl
 	$r = "";
 	$disabled = "";
 	if (entry_conflict($bid,$table_styles)) $disabled = "disabled"; 
-	if ($ind_aff_flag) $disabled = "disabled"; 
+	// if ($ind_aff_flag) $disabled = "disabled"; 
 	
 	if ($filter == "stewards") $role = "S"; else $role = "J";
 
@@ -1290,7 +1283,7 @@ function assign_to_table($tid,$bid,$filter,$total_flights,$round,$location,$tabl
 		// Check to see if the participant is already assigned to this round.
 		// If so (function returns a value greater than 0), display the following:
 		$r .= '<div class="form-inline">';
-		$r .= '<div class="checkbox">';
+		$r .= '<div class="checkbox" style="padding-bottom: 10px;">';
 		$r .= '<label for="unassign'.$random.'">';
 		$r .= '<input class="unassign-checkbox" type="checkbox" id="unassign'.$random.'" name="unassign'.$random.'" value="'.$unassign.'" '.$disabled.'>';
 		$r .= ' Unassign from their current assignment and...</label>';
@@ -1305,7 +1298,7 @@ function assign_to_table($tid,$bid,$filter,$total_flights,$round,$location,$tabl
 		
 		$r .= '<div class="form-inline">';
 		$r .= '<div class="form-group">';
-		$r .= '<div class="input-group">';
+		$r .= '<div class="input-group" style="padding-bottom: 10px;">';
 	    $r .= '<label class="radio-inline">';
 	    $r .= '<input type="radio" name="assignRound'.$random.'" value="'.$round.'" '.$selected.' '.$disabled.' /> Assign to this Table/Round';
 	    $r .= '</label>';
@@ -1440,7 +1433,7 @@ if ($queued == "N") { // Non-queued judging
 	// Build the flights DropDown
 
 	$hj_add = "head_judge_add('".$bid."','assign-flight-".$random."','".$tid."')";
-	$save_column = "save_column('".$base_url."','assignFlight','judging_assignments','".$bid."','".$tid."','".$role."','".$round."','".$random."','assign-flight-".$location."')";
+	$save_column = "save_column('".$ajax_url."','assignFlight','judging_assignments','".$bid."','".$tid."','".$role."','".$round."','".$random."','assign-flight-".$location."')";
 
 	$r .= sprintf("\n\n<select id=\"assign-flight-%s\" class=\"selectpicker assign-flight\" name=\"assignFlight\" %s onchange=\"%s;%s;\">",$random, $disabled, $hj_add, $save_column);
 
@@ -1487,16 +1480,26 @@ function judge_alert($round,$bid,$tid,$location,$likes,$dislikes,$table_styles,$
 		$entry_conflict = entry_conflict($bid,$table_styles);
 		$at_table = at_table($bid,$tid);
 		
-		if ($unavailable) $r = "bg-purple text-purple|<span class=\"text-purple\"><span class=\"fa fa-check\"></span> <strong>Assigned.</strong> Paricipant is assigned to another table in this round.</span>";
+		if ($unavailable) {
+		    
+		    $r = "bg-purple text-purple|";
+		    if ($ind_aff_flag) $r .= "<span class=\"text-purple\"><span class=\"fa fa-check\"></span> <strong>Assigned.</strong> Participant is assigned to another table in this round.</span><br><span class=\"fa fa-exclamation-circle\"></span> <strong>Conflict.</strong> Participant has reported an affiliation with one or more participants who have entries at this table. <strong>You are able to assign them to this table if you wish, but do so with caution and due diligence by checking their affiliation(s) via Manage Entries.</strong>";
+		    else $r .= "<span class=\"text-purple\"><span class=\"fa fa-check\"></span> <strong>Assigned.</strong> Participant is assigned to another table in this round.</span>";
+		    
+		}
 		
 		if ($entry_conflict) $r = "bg-info text-info|<span class=\"text-info\"><span class=\"fa fa-ban\"></span> <strong>Disabled.</strong> Participant has an entry at this table.</span>";
 
-		if ($ind_aff_flag) {
-			if ($_SESSION['prefsProEdition'] == 1) $r = "bg-info text-info|<span class=\"text-info\"><span class=\"fa fa-ban\"></span> <strong>Disabled.</strong> Participant has a reported organization affiliation at this table.</span>";
-			else $r = "bg-info text-info|<span class=\"text-info\"><span class=\"fa fa-ban\"></span> <strong>Disabled.</strong> Participant has a reported brewing partner or team affiliation at this table.</span>";
+		if ((!$unavailable) && (!$entry_conflict)) {
+			
+			if ($ind_aff_flag) {
+				
+				$r = "bg-teal text-teal|<span class=\"fa fa-exclamation-circle\"></span> <strong>Conflict.</strong> Participant has reported an affiliation with one or more participants who have entries at this table. <strong>You are able to assign them to this table if you wish, but do so with caution and due diligence by checking their affiliation(s) via Manage Entries.</strong>";
+
+			}
+			
+			$r = like_dislike($likes,$dislikes,$table_styles);
 		}
-		
-		if ((!$unavailable) && (!$entry_conflict) && (!$ind_aff_flag)) $r = like_dislike($likes,$dislikes,$table_styles);
 
 	}
 	
@@ -1533,7 +1536,8 @@ function judge_info($uid) {
 		."^".$row_brewer_info['brewerJudgeCider'];
 	}
 
-	$r .= "^".$row_brewer_info['brewerAssignment'];
+	if (isset($row_brewer_info['brewerAssignment'])) $r .= "^".$row_brewer_info['brewerAssignment'];
+	else $r .= "^";
 
 	if ($_SESSION['jPrefsQueued'] == "N") {
 		

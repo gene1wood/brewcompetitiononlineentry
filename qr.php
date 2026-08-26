@@ -20,11 +20,7 @@ $totalRows_prefs = mysqli_num_rows($prefs);
 
 $_SESSION['prefsLanguage'] = $row_prefs['prefsLanguage'];
 
-if (($action != "update") && ($action != "password-check")) {
-	if (function_exists('random_bytes')) $_SESSION['token'] = bin2hex(random_bytes(32));
-	elseif (function_exists('mcrypt_create_iv')) $_SESSION['token'] = bin2hex(mcrypt_create_iv(32,MCRYPT_DEV_URANDOM));
-	else $_SESSION['token'] = bin2hex(openssl_random_pseudo_bytes(32));
-}
+if (($action != "update") && ($action != "password-check")) csrf_token_generate(false);
 
 // Check if variation used (demarked with a dash)
 if (strpos($row_prefs['prefsLanguage'], '-') !== FALSE) {
@@ -42,6 +38,8 @@ if (!isset($_SESSION['qrPasswordOK'])) $logged_in = TRUE;
 $header_output = $row_contest_info['contestName'];
 $theme = $css_url.$row_prefs['prefsTheme'].".min.css";
 $process_allowed = FALSE;
+
+$request_method = strtoupper($_SERVER['REQUEST_METHOD']);
 
 // Validate user input against password in DB
 if ($action == "password-check") {
@@ -92,6 +90,7 @@ if ($action == "password-check") {
 				if ($check == 1) {
 					$password_redirect .= "&msg=2";
 					$_SESSION['qrPasswordOK'] = $password;
+					csrf_token_generate(true);
 				}
 
 				// If not successful, destroy session and redirect
@@ -157,8 +156,8 @@ if (($go == "default") && ($id != "default") && ($process_allowed)) {
 			if ($request_method === "POST") {
 
 				$token_hash = FALSE;
-				$token = filter_input(INPUT_POST,'token',FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-				if (hash_equals($_SESSION['token'],$token)) $token_hash = TRUE;
+				$token = filter_input(INPUT_POST,'user_session_token',FILTER_SANITIZE_FULL_SPECIAL_CHARS);
+				if (hash_equals($_SESSION['user_session_token'],$token)) $token_hash = TRUE;
 
 				if ((!$token) || (!$token_hash)) {
 					session_unset();
@@ -409,7 +408,7 @@ $_SESSION['last_action'] = time();
     <p class="lead text-primary"><strong><?php echo $qr_text_009; ?> <span class="badge"><?php echo sprintf("%06d",$id); ?></span></strong></p>
     <p class="lead text-danger"><small><strong><?php echo $qr_text_010; ?></strong></small></p>
     <form name="form1" data-toggle="validator" action="<?php echo $base_url; ?>qr.php?action=update<?php if ($id != "default") echo "&amp;id=".$id; ?>" method="post">
-    <input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+    <input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
     	<div class="form-group">
             <label for="inputJudgingNumber"><?php echo $label_judging_number; ?></label>
             <input type="tel" pattern="[^^]+"  maxlength="6" data-minlength="6" name="brewJudgingNumber" id="brewJudgingNumber" class="form-control" placeholder="<?php echo $qr_text_011; ?>" data-error="<?php echo $qr_text_013; ?>" autofocus>

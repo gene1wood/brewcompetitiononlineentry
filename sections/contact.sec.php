@@ -65,7 +65,7 @@ if ($_SESSION['prefsContact'] == "Y") {
     	$label6 = "CAPTCHA";
 
     	if ($msg == "1") {
-            if ($_SESSION['prefsEmailCC'] == 0) $message1 = sprintf("<p>%s <a href='".build_public_url("contact","default","default","default",$sef,$base_url,"default")."'>%s</a></p>",$contact_text_002,$contact_text_003); 
+            if ($_SESSION['prefsEmailCC'] == 1) $message1 = sprintf("<p>%s <a href='".build_public_url("contact","default","default","default",$sef,$base_url,"default")."'>%s</a></p>",$contact_text_002,$contact_text_003); 
     		else $message1 = sprintf("<p><a href='".build_public_url("contact","default","default","default",$sef,$base_url,"default")."'>%s</a></p>",$contact_text_003);
     		echo $message1;
     	}
@@ -86,7 +86,7 @@ $(document).ready(function() {
 });
 </script>
         <form id="submit-form" data-toggle="validator" role="form" class="form-horizontal hide-loader-form-submit" name="form1" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?dbTable=<?php echo $contacts_db_table; ?>&action=email">
-        <input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+        <input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
         	<div class="form-group">
             	<label for="" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label"><?php echo $label1; ?></label>
                 <div class="col-lg-10 col-md-9 col-sm-8 col-xs-12">
@@ -102,7 +102,7 @@ $(document).ready(function() {
                 	<div class="input-group has-warning">
                     	<span class="input-group-addon" id="from_name-addon1"><span class="fa fa-user"></span></span>
                 		<!-- Input Here -->
-                		<input id="from-name" class="form-control no-spam" name="from_name" type="text" size="35" value="<?php if (($msg == "2") && (isset($_COOKIE['from_name']))) echo $_COOKIE['from_name']; ?>" autofocus required>
+                		<input id="from-name" class="form-control no-spam" name="from_name" type="text" size="35" value="<?php if (($msg == "2") && (isset($_COOKIE['from_name']))) echo htmlspecialchars($_COOKIE['from_name'], ENT_QUOTES, 'UTF-8'); ?>" autofocus required>
                         <span class="input-group-addon" id="from_name-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
                     </div>
                     <div class="help-block with-errors"></div>
@@ -114,7 +114,7 @@ $(document).ready(function() {
                 	<div class="input-group has-warning">
                     	<span class="input-group-addon" id="from_email-addon3">@</span>
                 		<!-- Input Here -->
-                		<input id="from-email" class="form-control no-spam" name="from_email" type="email" size="35" value="<?php if (($msg == "2") && (isset($_COOKIE['from_email']))) echo $_COOKIE['from_email']; ?>" required>
+                		<input id="from-email" class="form-control no-spam" name="from_email" type="email" size="35" value="<?php if (($msg == "2") && (isset($_COOKIE['from_email']))) echo htmlspecialchars($_COOKIE['from_email'], ENT_QUOTES, 'UTF-8'); ?>" required>
                         <span class="input-group-addon" id="from_email-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
                     </div>
                     <div class="help-block with-errors"></div>
@@ -126,7 +126,7 @@ $(document).ready(function() {
                 	<div class="input-group has-warning">
                     	<span class="input-group-addon" id="subject-addon5"><span class="fa fa-info-circle"></span></span>
                 		<!-- Input Here -->
-                		<input id="subject" class="form-control no-spam" name="subject" type="text" value="<?php if (($msg == "2") && (isset($_COOKIE['subject']))) echo $_COOKIE['subject']; ?>" required>
+                		<input id="subject" class="form-control no-spam" name="subject" type="text" value="<?php if (($msg == "2") && (isset($_COOKIE['subject']))) echo htmlspecialchars($_COOKIE['subject'], ENT_QUOTES, 'UTF-8'); ?>" required>
                         <span class="input-group-addon" id="subject-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
                     </div>
                     <div class="help-block with-errors"></div>
@@ -138,7 +138,7 @@ $(document).ready(function() {
                 	<div class="input-group has-warning">
                     	<span class="input-group-addon" id="message-addon7"><span class="fa fa-pencil"></span></span>
                 		<!-- Input Here -->
-                		<textarea id="message" class="form-control no-spam" name="message" rows="6" required><?php if (($msg == "2") && (isset($_COOKIE['message']))) echo $_COOKIE['message']; ?></textarea>
+                		<textarea id="message" class="form-control no-spam" name="message" rows="6" required><?php if (($msg == "2") && (isset($_COOKIE['message']))) echo htmlspecialchars($_COOKIE['message'], ENT_QUOTES, 'UTF-8'); ?></textarea>
                         <span class="input-group-addon" id="message-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
                     </div>
                     <div class="help-block with-errors"></div>

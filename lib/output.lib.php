@@ -1,7 +1,5 @@
 <?php
 
-include (LIB.'admin.lib.php');
-
 function dropoff_loc($id) {
 	include (CONFIG.'config.php');
 	mysqli_select_db($connection,$database);
@@ -160,28 +158,41 @@ function pay_to_print($prefs_pay,$entry_paid) {
 // The following applies to labels.output.php
 // --------------------------------------------------------
 
-function truncate($string, $your_desired_width, $append="") {
-
+function truncate($string, $your_desired_width, $append="", $max_word_length=20) {
   $parts = preg_split('/([\s\n\r]+)/', $string, null, PREG_SPLIT_DELIM_CAPTURE);
   $parts_count = count($parts);
 
+  // Single word: truncate by character count
+  if ($parts_count === 1 && mb_strlen($string, 'UTF-8') > $your_desired_width) {
+    $append_len = mb_strlen($append, 'UTF-8');
+    return mb_substr($string, 0, $your_desired_width - $append_len, 'UTF-8') . $append;
+  }
+
   $length = 0;
   $last_part = 0;
-
   for (; $last_part < $parts_count; ++$last_part) {
-    $length += strlen($parts[$last_part]);
-    if ($length > $your_desired_width) { 
-    	break; 
+    $length += mb_strlen($parts[$last_part], 'UTF-8');
+    if ($length > $your_desired_width) {
+      $part = $parts[$last_part];
+      if (!preg_match('/[\s\n\r]/', $part) && mb_strlen($part, 'UTF-8') >= $max_word_length) {
+        $append_len = mb_strlen($append, 'UTF-8');
+        $remaining = $your_desired_width - ($length - mb_strlen($part, 'UTF-8')) - $append_len;
+        if ($remaining >= 1) {
+          $r = implode(array_slice($parts, 0, $last_part));
+          $r .= mb_substr($part, 0, $remaining, 'UTF-8') . $append;
+          return $r;
+        }
+      }
+      break;
     }
   }
 
   $r = implode(array_slice($parts, 0, $last_part));
-  
-  if (strlen($string) > $your_desired_width) {
-  	$r = rtrim($r);
-  	$r .= $append;
-  }
 
+  if (mb_strlen($string, 'UTF-8') > $your_desired_width) {
+    $r = rtrim($r);
+    $r .= $append;
+  }
   return $r;
 }
 
@@ -231,7 +242,7 @@ function total_days() {
 	include (CONFIG.'config.php');
 	mysqli_select_db($connection,$database);
 
-	$query_sessions = sprintf("SELECT judgingDate FROM %s", $prefix."judging_locations");
+	$query_sessions = sprintf("SELECT judgingDate FROM %s WHERE judgingLocType < 2", $prefix."judging_locations");
 	$sessions = mysqli_query($connection,$query_sessions) or die (mysqli_error($connection));
 	$row_sessions = mysqli_fetch_assoc($sessions);
 
@@ -300,7 +311,7 @@ function validate_bjcp_id($input) {
 function total_points($total_entries,$method) {
 
 	// Get the maximum allowable points for all roles
-	// According to the Maximum Points Earned (Table 1) table - https://dev.bjcp.org/about/reference/experience-point-award-schedule/
+	// According to the Maximum Points Earned (Table 1) table - https://bjcp.org/about/reference/experience-point-award-schedule/
 
 	$points = 0;
 
@@ -392,7 +403,7 @@ function judge_points($user_id,$judge_max_points) {
 			// Get date and determine 24 hour window where it falls based upon the time zone
 			$timestamp_curr_day_midnight = strtotime(date("Y-m-d", $row_judging['judgingDate']));
 			$timestamp_next_day_midnight = $timestamp_curr_day_midnight + (60 * 60 * 24);
-			$possible_judging_days[] = $timestamp_curr_day_midnight;
+			$possible_judging_days[] = $timestamp_curr_day_midnight;	
 
 			/**
 			 * Edited the query below to only take into account Round 1 of the assignment. 
@@ -404,14 +415,15 @@ function judge_points($user_id,$judge_max_points) {
 			 */
 
 			$query_assignments = sprintf("SELECT COUNT(*) as 'count' FROM %s WHERE bid='%s' AND assignLocation='%s' AND assignment='J' AND assignRound <= '1'", $prefix."judging_assignments", $user_id, $row_judging['id']);
-	    $assignments = mysqli_query($connection,$query_assignments) or die (mysqli_error($connection));
-	    $row_assignments = mysqli_fetch_assoc($assignments);
+	        $assignments = mysqli_query($connection,$query_assignments) or die (mysqli_error($connection));
+	        $row_assignments = mysqli_fetch_assoc($assignments);
 
-	    if ($row_assignments['count'] > 0) {
+	        if ($row_assignments['count'] > 0) {
 				
 				$days_judged[] = array (
 					"day_midnight" => $timestamp_curr_day_midnight,
 					"points" => $row_assignments['count'] * 0.5,
+					"distributed" => $row_judging['judgingLocType']
 				);
 
 			}
@@ -423,16 +435,34 @@ function judge_points($user_id,$judge_max_points) {
 	$possible_judging_days = array_unique($possible_judging_days);
 
 	if (!empty($days_judged)) {
+		
 		foreach ($possible_judging_days as $judging_day) {
+			
 			foreach ($days_judged as $day) {		
+				
 				$point_day = 0;
-				if ($day['day_midnight'] == $judging_day) {
+
+				// Treat each distributed session as it's own "day"
+				if ($day['distributed'] == 1) {
+
 					$point_day += $day['points'];
+					if ($point_day > 1.5) $points += 1.5;
+					else $points += $point_day;
+
 				}
-				if ($point_day > 1.5) $points += 1.5;
-				else $points += $point_day;
+
+				else {
+
+					if ($day['day_midnight'] == $judging_day) $point_day += $day['points'];
+					if ($point_day > 1.5) $points += 1.5;
+					else $points += $point_day;
+
+				}
+				
 			}
+		
 		}
+	
 	}
 
 	// Cannot exceed the maximum allowable points for judges for the competition

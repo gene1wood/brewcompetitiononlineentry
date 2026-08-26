@@ -43,11 +43,8 @@ do {
 
 if ($_SESSION['prefsWinnerMethod'] == "1") { // Output by Category
 
-	/*
-	if (HOSTED) $query_styles = sprintf("SELECT id,brewStyleGroup FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup ASC UNION ALL SELECT id,brewStyleGroup FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup ASC;", $styles_db_table, $_SESSION['prefsStyleSet'], $prefix."styles", $_SESSION['prefsStyleSet']);
-	else
-	*/
-	$query_styles = sprintf("SELECT id,brewStyleGroup FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup ASC;", $styles_db_table, $_SESSION['prefsStyleSet']);
+	if ($styleSet == "BJCP2025") $query_styles = sprintf("SELECT * FROM %s WHERE (brewStyleVersion='BJCP2025' AND brewStyleType='2') OR (brewStyleVersion='BJCP2021' AND brewStyleType !='2') OR brewStyleOwn='custom' ORDER BY brewStyleGroup ASC;", $styles_db_table);
+	else $query_styles = sprintf("SELECT id,brewStyleGroup FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup ASC;", $styles_db_table, $_SESSION['prefsStyleSet']);
 	$styles = mysqli_query($connection,$query_styles) or die (mysqli_error($connection));
 	$row_styles = mysqli_fetch_assoc($styles);
 	$totalRows_styles = mysqli_num_rows($styles);
@@ -106,7 +103,7 @@ if ($_SESSION['prefsWinnerMethod'] == "1") { // Output by Category
 
 			}
 
-			$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+			$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 			$pdf->Add_Label($text);
 
 			} while ($row_scores = mysqli_fetch_assoc($scores));
@@ -117,11 +114,8 @@ if ($_SESSION['prefsWinnerMethod'] == "1") { // Output by Category
 
 elseif ($_SESSION['prefsWinnerMethod'] == "2") { // Output by sub-category
 
-	/*
-	if (HOSTED) $query_styles = sprintf("SELECT id,brewStyleGroup,brewStyleNum,brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup,brewStyleNum ASC UNION ALL SELECT id,brewStyleGroup,brewStyleNum,brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup,brewStyleNum ASC;", $styles_db_table, $_SESSION['prefsStyleSet'], $prefix."styles", $_SESSION['prefsStyleSet']);
-	else
-	*/
-	$query_styles = sprintf("SELECT id,brewStyleGroup,brewStyleNum,brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup,brewStyleNum ASC;", $styles_db_table, $_SESSION['prefsStyleSet']);
+	if ($styleSet == "BJCP2025") $query_styles = sprintf("SELECT * FROM %s WHERE (brewStyleVersion='BJCP2025' AND brewStyleType='2') OR (brewStyleVersion='BJCP2021' AND brewStyleType !='2') OR brewStyleOwn='custom' ORDER BY brewStyleGroup ASC;", $styles_db_table);
+	else $query_styles = sprintf("SELECT id,brewStyleGroup,brewStyleNum,brewStyle FROM %s WHERE (brewStyleVersion='%s' OR brewStyleOwn='custom') ORDER BY brewStyleGroup,brewStyleNum ASC;", $styles_db_table, $_SESSION['prefsStyleSet']);
 	$styles = mysqli_query($connection,$query_styles) or die (mysqli_error($connection));
 	$row_styles = mysqli_fetch_assoc($styles);
 	$totalRows_styles = mysqli_num_rows($styles);
@@ -179,7 +173,7 @@ elseif ($_SESSION['prefsWinnerMethod'] == "2") { // Output by sub-category
 
 				}
 
-				$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+				$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 				$pdf->Add_Label($text);
 
 			} while ($row_scores = mysqli_fetch_assoc($scores));
@@ -233,7 +227,7 @@ else { // Output by Table.
 
 			}
 
-			$text = iconv('UTF-8','ASCII//TRANSLIT//IGNORE',$text);
+			$text = (iconv("UTF-8", "ASCII//TRANSLIT//IGNORE", transliterator_transliterate('Any-Latin; Latin-ASCII', $text)));
 			if ($display_place != "N/A") $pdf->Add_Label($text);
 
 		} while ($row_scores = mysqli_fetch_assoc($scores));

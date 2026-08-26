@@ -7,7 +7,7 @@
 
 ob_start();
 error_reporting(E_ALL ^ E_NOTICE);
-ini_set('display_errors', '1');
+ini_set('display_errors', '0');
 
 require ('../paths.php');
 require (INCLUDES.'url_variables.inc.php');
@@ -16,7 +16,14 @@ include (INCLUDES.'scrubber.inc.php');
 include (LIB.'common.lib.php');
 include (LIB.'update.lib.php');
 require (DB.'common.db.php');
-include (LANG.'language.lang.php');
+include (LANG.'language.lang.php'); 
+require (LIB.'process.lib.php');
+
+$mail_use_smtp = FALSE;
+if (HOSTED) $mail_use_smtp = TRUE;
+elseif (isset($_SESSION['prefsEmailSMTP'])) { 
+    if (($_SESSION['prefsEmailSMTP'] == 1) && (!empty($_SESSION['prefsEmailHost'])) && (!empty($_SESSION['prefsEmailFrom'])) && (!empty($_SESSION['prefsEmailUsername'])) && (!empty($_SESSION['prefsEmailPassword'])) && (!empty($_SESSION['prefsEmailPort']))) $mail_use_smtp = TRUE;
+}
 
 mysqli_select_db($connection,$database);
 
@@ -41,7 +48,7 @@ if ($section == "setup") {
 
 		else {
 			$query_prefs_tz = sprintf("SELECT prefsTimeZone FROM %s WHERE id='1'", $prefix."preferences");
-			$prefs_tz = mysqli_query($connection,$query_prefs_tz) or die (mysqli_error($connection));
+			$prefs_tz = mysqli_query($connection,$query_prefs_tz) or die("A database error occurred.");
 			$row_prefs_tz = mysqli_fetch_assoc($prefs_tz);
 			$totalRows_prefs_tz = mysqli_num_rows($prefs_tz);
 
@@ -85,28 +92,48 @@ if ((isset($_SESSION['prefsSEF'])) && ($_SESSION['prefsSEF'] == "Y")) $sef = TRU
 $request_method = strtoupper($_SERVER['REQUEST_METHOD']);
 $bypass_token = array("login","logout","forgot","reset","paypal");
 
+/*
+// Troubleshoot
+echo "GET session ID: ".$_POST['session-id']."<br>";
+echo "POST session ID: ".session_id()."<br>";
+echo "Posted CSRF: ".$_POST['user_session_token']."<br>";
+echo "Session CSRF: ".$_SESSION['user_session_token']."<br>";
+$error_log = "CSRF validate on " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI'] .
+          " posted=" . ($_POST['user_session_token'] ?? '(missing)') .
+          " session=" . ($_SESSION['user_session_token'] ?? '(missing)');
+echo $error_log;
+error_log($error_log);
+exit();
+*/
+
 if (($request_method === "POST") && (!in_array($section,$bypass_token))) {
 
 	$token_hash = FALSE;
-	$token = filter_input(INPUT_POST,'token',FILTER_SANITIZE_FULL_SPECIAL_CHARS);
-	if (hash_equals($_SESSION['token'],$token)) $token_hash = TRUE;
+	$posted = filter_input(INPUT_POST, 'user_session_token', FILTER_UNSAFE_RAW);
+	$posted = is_string($posted) ? trim($posted) : '';
+	$session = $_SESSION['user_session_token'] ?? '';
 
-	if ((!$token) || (!$token_hash) || (!$process_allowed)) {
-		session_unset();
-		session_destroy();
-		session_write_close();
-		$redirect = $base_url."403.php";
-		$redirect = prep_redirect_link($redirect);
-		$redirect_go_to = sprintf("Location: %s", $redirect);
-		header($redirect_go_to);
-		exit();
+	// Validate shape first (example: 64 hex chars for 32 bytes)
+	$valid_shape = (bool) preg_match('/^[a-f0-9]{64}$/i', $posted);
+
+	if (($valid_shape) && ($session !== '') && (hash_equals($session, $posted))) {
+		$token_hash = TRUE;
+	}
+
+	if (($posted === '') || (!$token_hash) || (!$process_allowed)) {
+	    session_unset();
+	    session_destroy();
+	    session_write_close();
+	    $redirect = $base_url."index.php?section=403";
+	    $redirect = prep_redirect_link($redirect);
+	    $redirect_go_to = sprintf("Location: %s", $redirect);
+	    header($redirect_go_to);
+	    exit();
 	}
 
 }
 
 if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER_NAME'])) && ((isset($_SESSION['prefs'.$prefix_session])) || ($setup_free_access))) {
-
-	require(LIB.'process.lib.php');
 
 	$archive_db_table = $prefix."archive";
 	$brewer_db_table = $prefix."brewer";
@@ -168,14 +195,16 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 	// --------------------------- Various Actions ------------------------------- //
 
-
 	// Log in, log out, forgot password
 	if ($action == "login") include (INCLUDES.'logincheck.inc.php');
 	elseif ($action == "logout") include (INCLUDES.'logout.inc.php');
-	elseif (($action == "forgot") || ($action == "reset")) include (INCLUDES.'forgot_password.inc.php');
+	elseif (($action == "forgot") || ($action == "reset")) include (PROCESS.'process_forgot_password.inc.php');
 
 	// Delete
 	elseif ($action == "delete") include (PROCESS.'process_delete.inc.php');
+
+	// Create a practice judging session
+	//elseif ($action == "practice_session") include (PROCESS.'process_judging_practice_session.inc.php');
 	
 	// Barcode check in
 	elseif ($action == "barcode_check_in") include (PROCESS.'process_barcode_check_in.inc.php');
@@ -224,17 +253,21 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 		$query_contest_info1 = sprintf("SELECT contestEntryFeePassword FROM %s WHERE id='1'",$prefix."contest_info");
 		if (SINGLE) $query_contest_info1 .= sprintf(" WHERE comp_id='%s'",$_SESSION['comp_id']);
-		$contest_info1 = mysqli_query($connection,$query_contest_info1) or die (mysqli_error($connection));
+		$contest_info1 = mysqli_query($connection,$query_contest_info1) or die("A database error occurred.");
 		$row_contest_info1 = mysqli_fetch_assoc($contest_info1);
 
-		if (sterilize($_POST['brewerDiscount']) == $row_contest_info1['contestEntryFeePassword']) {
-			$updateSQL = sprintf("UPDATE $brewer_db_table SET brewerDiscount=%s WHERE uid=%s", GetSQLValueString("Y", "text"), GetSQLValueString($id, "text"));
+		$secretKey = base64_encode(bin2hex($password));
+		$nacl = base64_encode(bin2hex($server_root));
+		$contestEntryFeePassword = simpleDecrypt($row_contest_info1['contestEntryFeePassword'], $secretKey, $nacl);
+
+		if (sterilize($_POST['brewerDiscount']) == $contestEntryFeePassword) {
+			$updateSQL = sprintf("UPDATE $brewer_db_table SET brewerDiscount='%s' WHERE uid='%s'", "Y", $id);
 			mysqli_real_escape_string($connection,$updateSQL);
-			$result = mysqli_query($connection,$updateSQL) or die (mysqli_error($connection));
-			$redirect_go_to = sprintf("Location: %s", $base_url."index.php?section=pay&bid=".$id."&msg=12");
+			$result = mysqli_query($connection,$updateSQL) or die("A database error occurred.");
+			$redirect_go_to = sprintf("Location: %s", $base_url."index.php?section=list&bid=".$id."&msg=15");
 		}
 
-		else $redirect_go_to = sprintf("Location: %s", $base_url."index.php?section=pay&bid=".$id."&msg=13");
+		else $redirect_go_to = sprintf("Location: %s", $base_url."index.php?section=list&bid=".$id."&msg=16");
 	}
 
 	// Convert entries to selected BJCP version
@@ -248,7 +281,7 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 			$updateSQL = sprintf("UPDATE %s SET prefsStyleSet='%s' WHERE id='%s'",$prefix."preferences","BJCP2015","1");
 			mysqli_real_escape_string($connection,$updateSQL);
-			$result = mysqli_query($connection,$updateSQL) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$updateSQL) or die("A database error occurred.");
 
 		}
 
@@ -258,7 +291,17 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 			$updateSQL = sprintf("UPDATE %s SET prefsStyleSet='%s' WHERE id='%s'",$prefix."preferences","BJCP2021","1");
 			mysqli_real_escape_string($connection,$updateSQL);
-			$result = mysqli_query($connection,$updateSQL) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$updateSQL) or die("A database error occurred.");
+
+		}
+
+		if ($_SESSION['prefsStyleSet'] == "BJCP2021") {
+
+			include (INCLUDES.'convert/convert_bjcp_2025.inc.php');
+
+			$updateSQL = sprintf("UPDATE %s SET prefsStyleSet='%s' WHERE id='%s'",$prefix."preferences","BJCP2025","1");
+			mysqli_real_escape_string($connection,$updateSQL);
+			$result = mysqli_query($connection,$updateSQL) or die("A database error occurred.");
 
 		}
 		
@@ -290,34 +333,34 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 		$update = sprintf("UPDATE %s SET prefsDisplayWinners='%s', prefsWinnerDelay='%s' WHERE id='%s'",$prefix."preferences","Y",time(),"1");
 		mysqli_real_escape_string($connection,$update);
-		$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+		$result = mysqli_query($connection,$update) or die("A database error occurred.");
 
 		if ($_SESSION['contestRegistrationDeadline'] > time()) {
 			$update = sprintf("UPDATE %s SET contestRegistrationDeadline='%s' WHERE id='%s'",$prefix."contest_info",time(),"1");
 			mysqli_real_escape_string($connection,$update);
-			$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$update) or die("A database error occurred.");
 		}
 
 		if ($_SESSION['contestEntryDeadline'] > time()) {
 			$update = sprintf("UPDATE %s SET contestEntryDeadline='%s' WHERE id='%s'",$prefix."contest_info",time(),"1");
 			mysqli_real_escape_string($connection,$update);
-			$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$update) or die("A database error occurred.");
 		}
 
 		if ($_SESSION['contestJudgeDeadline'] > time()) {
 			$update = sprintf("UPDATE %s SET contestJudgeDeadline='%s' WHERE id='%s'",$prefix."contest_info",time(),"1");
 			mysqli_real_escape_string($connection,$update);
-			$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$update) or die("A database error occurred.");
 		}
 
 		if ($_SESSION['jPrefsJudgingClosed'] > time()) {
 			$update = sprintf("UPDATE %s SET jPrefsJudgingClosed='%s' WHERE id='%s'",$prefix."judging_preferences",time(),"1");
 			mysqli_real_escape_string($connection,$update);
-			$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+			$result = mysqli_query($connection,$update) or die("A database error occurred.");
 		}
 
 		$query_judging_locations = sprintf("SELECT id,judgingDate FROM %s",$prefix."judging_locations",time());
-		$judging_locations = mysqli_query($connection,$query_judging_locations) or die (mysqli_error($connection));
+		$judging_locations = mysqli_query($connection,$query_judging_locations) or die("A database error occurred.");
 		$row_judging_locations = mysqli_fetch_assoc($judging_locations);
 		$totalRows_judging_locations = mysqli_num_rows($judging_locations);
 
@@ -329,7 +372,7 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 					$update = sprintf("UPDATE %s SET judgingDate='%s' WHERE id='%s'",$prefix."judging_locations",time(),$row_judging_locations['id']);
 					mysqli_real_escape_string($connection,$update);
-					$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+					$result = mysqli_query($connection,$update) or die("A database error occurred.");
 
 				}
 
@@ -339,7 +382,7 @@ if (((isset($_SERVER['HTTP_REFERER'])) && ($referrer['host'] == $_SERVER['SERVER
 
 		$update = sprintf("UPDATE %s SET judgingDateEnd='%s' WHERE judgingLocType='1'",$prefix."judging_locations",time());
 		mysqli_real_escape_string($connection,$update);
-		$result = mysqli_query($connection,$update) or die (mysqli_error($connection));
+		$result = mysqli_query($connection,$update) or die("A database error occurred.");
 
 		if (session_status() === PHP_SESSION_NONE) {
 			session_name($prefix_session);

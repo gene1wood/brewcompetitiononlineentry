@@ -1,33 +1,38 @@
 <!-- Aroma -->
-<h5>Aroma<span class="pull-right"><?php echo $row_eval['evalAromaScore']; ?>/12</span></h5>
+<h5>Aroma<span class="pull-right"><?php echo $row_eval['evalAromaScore']; ?> <small>/ 12</small></span></h5>
+<hr>
 <p><?php echo $row_eval['evalAromaChecklist']; ?></p>
 <?php if (!empty($row_eval['evalAromaChecklistDesc'])) { ?>
 <p><?php echo $row_eval['evalAromaChecklistDesc']; ?></p>
 <?php } ?>
 <p><?php echo $row_eval['evalAromaComments']; ?></p>
 <!-- Appearance -->
-<h5>Appearance<span class="pull-right"><?php echo $row_eval['evalAppearanceScore']; ?>/3</span></h5>
+<h5>Appearance<span class="pull-right"><?php echo $row_eval['evalAppearanceScore']; ?> <small>/ 3</small></span></h5>
+<hr>
 <p><?php echo $row_eval['evalAppearanceChecklist']; ?></p>
 <?php if (!empty($row_eval['evalAppearanceChecklistDesc'])) { ?>
 <p><?php echo $row_eval['evalAppearanceChecklistDesc']; ?></p>
 <?php } ?>
 <p><?php echo $row_eval['evalAppearanceComments']; ?></p>
 <!-- Flavor -->
-<h5>Flavor<span class="pull-right"><?php echo $row_eval['evalFlavorScore']; ?>/20</span></h5>
+<h5>Flavor<span class="pull-right"><?php echo $row_eval['evalFlavorScore']; ?> <small>/ 20</small></span></h5>
+<hr>
 <p><?php echo $row_eval['evalFlavorChecklist']; ?></p>
 <?php if (!empty($row_eval['evalFlavorChecklistDesc'])) { ?>
 <p><?php echo $row_eval['evalFlavorChecklistDesc']; ?></p>
 <?php } ?>
 <p><?php echo $row_eval['evalFlavorComments']; ?></p>
 <!-- Mouthfeel -->
-<h5>Mouthfeel<span class="pull-right"><?php echo $row_eval['evalMouthfeelScore']; ?>/5</span></h5>
+<h5>Mouthfeel<span class="pull-right"><?php echo $row_eval['evalMouthfeelScore']; ?> <small>/ 5</small></span></h5>
+<hr>
 <p><?php echo $row_eval['evalMouthfeelChecklist']; ?></p>
 <?php if (!empty($row_eval['evalMouthfeelChecklistDesc'])) { ?>
 <p><?php echo $row_eval['evalMouthfeelChecklistDesc']; ?></p>
 <?php } ?>
 <p><?php echo $row_eval['evalMouthfeelComments']; ?></p>
 <!-- Overall Impression -->
-<h5>Overall Impression<span class="pull-right"><?php echo $row_eval['evalOverallScore']; ?>/10</span></h5>
+<h5>Overall Impression<span class="pull-right"><?php echo $row_eval['evalOverallScore']; ?> <small>/ 10</small></span></h5>
+<hr>
 <p><?php echo $row_eval['evalOverallComments']; ?></p>
 <div class="row" style="padding: 20px 0 0 0;">
 	<div class="col col-lg-6 col-md-6 col-sm-6 col-xs-6">
@@ -73,7 +78,7 @@
     </div>  
 </div><!-- ./box -->
 <!-- Total -->
-<h5><?php echo $label_total; ?><span class="pull-right"><?php echo $score; ?>/50</span></h5>
+<h5><?php echo $label_total; ?><span class="pull-right"><?php echo $score; ?> <small>/ 50</small></span></h5>
 <!-- Scoring Guide -->
 <div class="row footer-descriptor" style="padding: 20px 0 0 0;">
 	<div class="col col-lg-6 col-md-6 col-sm-6 col-xs-6">
@@ -262,9 +267,22 @@ $flaw_7_arr = array($label_grassy,$label_solvent,$label_yeasty);
 </tbody>
 </table>
 <?php } ?>
-<!-- Footer -->
-<p style="padding-top: 30px;"><small><em><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p>
-<?php if (!empty($row_eval['evalFinalScore'])) { ?>
-<p><small><em><?php echo $evaluation_info_069; ?></em></small></p>
-<?php } ?>
+<div class="row">
+    <div class="col col-xs-8">
+        <?php if (!$nw_cider) { ?><p style="padding-top: 2em;"><small><em><?php echo sprintf("%s %s. &copy;%s Beer Judge Certification Program.",$evaluation_info_070,$scoresheet_type,date('Y')); ?></em></small></p><?php } ?>
+        <?php if (!empty($row_eval['evalFinalScore'])) { ?>
+        <p style="padding-top: 1em;"><small><em>** <?php echo $evaluation_info_069; ?></em></small></p>
+        <?php } ?>
+    </div>
+    <div class="col col-xs-4">
+        <!--
+        <?php if ($_SESSION['prefsProEdition'] == 0) { ?>
+        <div class="pull-right">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?data=<?php echo urlencode($mhp_qr_data); ?>&amp;size=150x150&amp;charset-source=UTF-8&amp;format=svg" />
+            <p><small><em>For MHP Use Only</em></small></p>
+        </div>
+        <?php } ?>
+        -->
+    </div>
+</div>
 <div style="page-break-after: always;"></div>

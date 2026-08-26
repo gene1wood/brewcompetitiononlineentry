@@ -28,6 +28,9 @@ if ((($action == "default") && ($filter == "default")) || ($section == "step7") 
 			$brewStyleActive = "";
 			if (array_key_exists($row_styles['id'],$current_styles_active)) $brewStyleActive = "CHECKED";
 
+			$brewStyleAtLimit = "";
+			if ((!empty($row_styles['brewStyleAtLimit'])) && ($row_styles['brewStyleAtLimit'] == 1)) $brewStyleAtLimit = "CHECKED";
+
 			$brewStyleOwn_prefix = "";
 			$brewStyleOwn_suffix = "";
 			 if ($row_styles['brewStyleOwn'] != "bcoe") {
@@ -51,8 +54,8 @@ if ((($action == "default") && ($filter == "default")) || ($section == "step7") 
 
 			$table_body .= "<tr>";
 			$table_body .= "<input type=\"hidden\" name=\"id[]\" value=\"".$row_styles['id']."\" />";
-			if ($bid == "default") $table_body .= "<td width=\"1%\" nowrap><input name=\"brewStyleActive".$row_styles['id']."\" type=\"checkbox\" value=\"Y\" ".$brewStyleActive."></td>";
-			if ($bid != "default") $table_body .= "<td width=\"1%\" nowrap><input name=\"brewStyleJudgingLoc".$row_styles['id']."\" type=\"checkbox\" value=\"".$bid."\" ".$brewStyleJudgingLoc."></td>";
+			if ($bid == "default") $table_body .= "<td width=\"1%\" nowrap><input class=\"enable-style\" name=\"brewStyleActive".$row_styles['id']."\" type=\"checkbox\" value=\"Y\" ".$brewStyleActive."></td>";
+			if ($bid != "default") $table_body .= "<td width=\"1%\" nowrap><input class=\"enable-style\" name=\"brewStyleJudgingLoc".$row_styles['id']."\" type=\"checkbox\" value=\"".$bid."\" ".$brewStyleJudgingLoc."></td>";
 			$table_body .= "<td>".$row_styles['brewStyle']."</td>";
 			if ($_SESSION['prefsStyleSet'] == "BA") {
 				if ($row_styles['brewStyleOwn'] == "custom") $table_body .= "<td>*Custom Style</td>";
@@ -65,6 +68,7 @@ if ((($action == "default") && ($filter == "default")) || ($section == "step7") 
 			else $table_body .= "<td>".$brewStyleOwn_prefix.$row_styles['brewStyleGroup'].$row_styles['brewStyleNum'].$brewStyleOwn_suffix."</td>";
 			$table_body .= "<td>".style_type($row_styles['brewStyleType'],"2",$style_own)."</td>";
 			$table_body .= "<td>".$brewStyleReqSpec.$brewStyleStrength.$brewStyleCarb.$brewStyleSweet."</td>";
+			$table_body .= "<td width=\"1%\" nowrap><input class=\"limit-style\" name=\"brewStyleAtLimit".$row_styles['id']."\" type=\"checkbox\" value=\"1\" ".$brewStyleAtLimit."></td>";
 			$table_body .= "<td class=\"hidden-print\">";
 			if ($section != "step7") {
 				if ($row_styles['brewStyleOwn'] != "bcoe") $table_body .= "<a href=\"".$base_url."index.php?section=admin&amp;go=".$go."&amp;action=edit&amp;id=".$row_styles['id']."&amp;view=".$row_styles['brewStyleType']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Edit ".$row_styles['brewStyle']."\"><span class=\"fa fa-lg fa-pencil\"></span></a> <a class=\"hide-loader\" href=\"".$base_url."includes/process.inc.php?section=admin&amp;go=".$go."&amp;dbTable=".$styles_db_table."&amp;action=delete&amp;id=".$row_styles['id']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Delete ".$row_styles['brewStyle']."\" data-confirm=\"Are you sure you want to delete ".$row_styles['brewStyle']."? This cannot be undone. Deleting a custom style will remove it and associated entries from any public past winner lists. To avoid this, simply deactivate the style.\"><span class=\"fa fa-lg fa-trash-o\"></span></a> ";
@@ -105,46 +109,78 @@ if ($section != "step7") { ?>
 	<?php } ?>
 </div>
 <?php } if ((($action == "default") && ($filter == "default")) || ($section == "step7") || (($action == "default") && ($filter == "judging") && ($bid != "default"))) { ?>
+
 <script type="text/javascript" language="javascript">
-	$(document).ready(function() {
-		$('#sortable').dataTable( {
-			"bPaginate" : false,
-			"sDom": 'rft',
-			"bStateSave" : false,
-			"bLengthChange" : false,
-			"aaSorting": <?php echo $sorting_default; ?>,
-			"bProcessing" : false,
-			"aoColumns": [
-				{ "asSorting": [  ] },
-				null,
-				null,
-				null,
-				{ "asSorting": [  ] },
-				{ "asSorting": [  ] }
-				]
-			} );
-		} );
+function syncSelectAll($selectAll, $group) {
+  const allChecked = $group.length === $group.filter(':checked').length;
+  $selectAll.prop('checked', allChecked);
+}
 
-function checkUncheckAll(theElement) {
-     var theForm = theElement.form, z = 0;
-	 for(z=0; z<theForm.length;z++){
-      if(theForm[z].type == 'checkbox' && theForm[z].name != 'checkall'){
-	  theForm[z].checked = theElement.checked;
-	  }
-     }
-    }
+function handleSelectAll($selectAll, $group) {
+  const allChecked = $group.length === $group.filter(':checked').length;
+  $group.prop('checked', !allChecked);
+  $selectAll.prop('checked', !allChecked);
+}
+
+$(document).ready(function () {
+
+  const $selectAllEnable = $('#select-all-enable');
+  const $selectAllLimit  = $('#select-all-limit');
+  const $enableBoxes     = $('.enable-style');
+  const $limitBoxes      = $('.limit-style');
+
+  // Select-all checkbox click handlers
+  $selectAllEnable.on('change', function () {
+    handleSelectAll($selectAllEnable, $enableBoxes);
+  });
+
+  $selectAllLimit.on('change', function () {
+    handleSelectAll($selectAllLimit, $limitBoxes);
+  });
+
+  // Individual checkbox change handlers — keep select-all in sync
+  $enableBoxes.on('change', function () {
+    syncSelectAll($selectAllEnable, $enableBoxes);
+  });
+
+  $limitBoxes.on('change', function () {
+    syncSelectAll($selectAllLimit, $limitBoxes);
+  });
+
+  syncSelectAll($selectAllEnable, $enableBoxes);
+  syncSelectAll($selectAllLimit, $limitBoxes);
+
+  $('#sortable').dataTable({
+  	"bPaginate" : false,
+  	"sDom": 'rft',
+  	"bStateSave" : false,
+  	"bLengthChange" : false,
+  	"aaSorting": <?php echo $sorting_default; ?>,
+  	"bProcessing" : false,
+  	"aoColumns": [
+  		{ "asSorting": [  ] },
+  		null,
+  		null,
+  		null,
+  		{ "asSorting": [  ] },
+  		{ "asSorting": [  ] },
+  		{ "asSorting": [  ] }
+  		]
+  	});
+
+});
 </script>
-
 <form name="form1" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php if ($section == "step7") echo "setup"; else echo $section; ?>&amp;action=update&amp;dbTable=<?php echo $styles_db_table; ?>&amp;filter=<?php echo $filter; if ($bid != "default") echo "&amp;bid=".$bid; ?>">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <table class="table table-responsive table-striped table-bordered" id="sortable">
 <thead>
  <tr>
-  <th><input type="checkbox" name="checkall" onclick="checkUncheckAll(this);"/></th>
+  <th><input type="checkbox" id="select-all-enable" /></th>
   <th>Style Name</th>
   <th><?php if (strpos($_SESSION['prefsStyleSet'],"BJCP") === false) echo "Overall Category"; else echo "#"; ?></th>
   <th>Style Type</th>
   <th>Requirements</th>
+  <th nowrap="nowrap"><input type="checkbox" id="select-all-limit" /> Restrict Entries <a tabindex="0" type="button" role="button" data-toggle="popover" data-html="true" data-trigger="hover" data-placement="auto top" data-container="body" data-content="If you want to restrict further entries for a style on the fly, check its corresponding box in this column and then select Update at the bottom of the page. <span class='text-primary'><strong>Please Note:</strong> This will override any table-level restriction if using Table Limits in Tables Planning Mode.</span>" ?><i class="fa fa-question-circle"></i></a></th>
   <th class="hidden-print">Actions</th>
  </tr>
  </thead>
@@ -230,43 +266,40 @@ function checkStyleIdentifier() {
 </script>
 
 <form data-toggle="validator" role="form" class="form-horizontal" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo $section; ?>&amp;action=<?php echo $action; ?>&amp;dbTable=<?php echo $styles_db_table; ?>&amp;go=<?php echo $go; if ($action == "edit") echo "&amp;id=".$id; ?>" id="form1" name="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <div class="form-group"><!-- Form Group REQUIRED Text Input -->
 	<label for="brewStyle" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Name</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
-			<!-- Input Here -->
-			<input class="form-control" id="brewStyle" name="brewStyle" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyle']; ?>" placeholder="" data-error="The custom style's name is required." autofocus required>
+				<input class="form-control" id="brewStyle" name="brewStyle" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyle']; ?>" placeholder="" data-error="The custom style's name is required." autofocus required>
 			<span class="input-group-addon" id="brewStyle-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
         <div class="help-block with-errors"></div>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 <div class="form-group">
 	<label for="brewStyleGroup" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Style Number or Identifier</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
-			<!-- Input Here -->
-			<input class="form-control" id="brewStyleGroup" name="brewStyleGroup" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleGroup']; ?>" placeholder="" data-error="The custom style number or identifier is required." maxlength="3" required onInput="checkStyleIdentifier()" onKeypress="checkStyleIdentifier()">
+				<input class="form-control" id="brewStyleGroup" name="brewStyleGroup" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleGroup']; ?>" placeholder="" data-error="The custom style number or identifier is required." maxlength="3" required onInput="checkStyleIdentifier()" onKeypress="checkStyleIdentifier()">
 			<span class="input-group-addon" id="brewStyle-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<div class="help-block">Provide the overall identifier for the style. Three (3) character limit.</div>
        	<div class="help-block with-errors"></div>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 <div class="form-group">
 	<label for="brewStyleNum" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Sub-Style Number or Identifier</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group has-warning">
-			<!-- Input Here -->
-			<input class="form-control" id="brewStyleNum" name="brewStyleNum" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleNum']; ?>" placeholder="" data-error="The custom style category's sub-style identifer is required." maxlength="2" required onInput="checkStyleIdentifier()" onKeypress="checkStyleIdentifier()">
+				<input class="form-control" id="brewStyleNum" name="brewStyleNum" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleNum']; ?>" placeholder="" data-error="The custom style category's sub-style identifer is required." maxlength="2" required onInput="checkStyleIdentifier()" onKeypress="checkStyleIdentifier()">
 			<span class="input-group-addon" id="brewStyle-addon2" data-tooltip="true" title="<?php echo $form_required_fields_02; ?>"><span class="fa fa-star"></span></span>
 		</div>
 		<div class="help-block">Provide a <strong>unique</strong> identifier for this style. Two (2) character limit.</div>
        	<div class="help-block with-errors"></div>
        	<div>Style Status: <span id="style-identifier-status">Awaiting input.</span></div>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 <div class="form-group"><!-- Form Group REQUIRED Select -->
 	<label for="brewStyleType" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Style Type</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12 has-warning">
@@ -280,13 +313,12 @@ function checkStyleIdentifier() {
 	</select>
 	<span id="helpBlock" class="help-block"><a class="btn btn-sm btn-primary" href="<?php echo $base_url; ?>index.php?section=admin&amp;go=style_types&amp;action=add"><span class="fa fa-plus-circle"></span> Add a Style Type</a></span>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 <div class="form-group"><!-- Form Group Radio INLINE -->
 	<label for="brewStyleReqSpec" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Required Info</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 		<div class="input-group">
-			<!-- Input Here -->
-			<label class="radio-inline">
+				<label class="radio-inline">
 				<input type="radio" name="brewStyleReqSpec" value="1" id="brewStyleReqSpec_0" <?php if ($row_styles['brewStyleReqSpec'] == 1) echo "CHECKED"; ?> />Yes
 			</label>
 			<label class="radio-inline">
@@ -294,14 +326,13 @@ function checkStyleIdentifier() {
 			</label>
 		</div>
 	</div>
-</div><!-- ./Form Group -->
+</div>
 <div id="mead-cider">
 	<div class="form-group"><!-- Form Group Radio INLINE -->
 		<label for="brewStyleCarb" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Require Carbonation</label>
 		<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 			<div class="input-group">
-				<!-- Input Here -->
-				<label class="radio-inline">
+						<label class="radio-inline">
 					<input type="radio" name="brewStyleCarb" value="1" id="brewStyleCarb_0" <?php if ($row_styles['brewStyleCarb'] == 1) echo "CHECKED"; ?> />Yes
 				</label>
 				<label class="radio-inline">
@@ -310,13 +341,12 @@ function checkStyleIdentifier() {
 				<div class="help-block with-errors"></div>
 			</div>
 		</div>
-	</div><!-- ./Form Group -->
+	</div>
 	<div class="form-group"><!-- Form Group Radio INLINE -->
 		<label for="brewStyleSweet" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Require Sweetness</label>
 		<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 			<div class="input-group">
-				<!-- Input Here -->
-				<label class="radio-inline">
+						<label class="radio-inline">
 					<input type="radio" name="brewStyleSweet" value="1" id="brewStyleSweet_0" <?php if ($row_styles['brewStyleSweet'] == 1) echo "CHECKED"; ?> />Yes
 				</label>
 				<label class="radio-inline">
@@ -325,15 +355,14 @@ function checkStyleIdentifier() {
 			</div>
 			<div class="help-block with-errors"></div>
 		</div>
-	</div><!-- ./Form Group -->
+	</div>
 </div>
 <div id="mead">
 	<div class="form-group"><!-- Form Group Radio INLINE -->
 		<label for="brewStyleStrength" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Require Strength</label>
 		<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
 			<div class="input-group">
-				<!-- Input Here -->
-				<label class="radio-inline">
+						<label class="radio-inline">
 					<input type="radio" name="brewStyleStrength" value="1" id="brewStyleStrength_0" <?php if ($row_styles['brewStyleStrength'] == 1) echo "CHECKED"; ?> />Yes
 				</label>
 				<label class="radio-inline">
@@ -342,109 +371,95 @@ function checkStyleIdentifier() {
 			</div>
 			<div class="help-block with-errors"></div>
 		</div>
-	</div><!-- ./Form Group -->
+	</div>
 </div>
-<div id="brewStyleEntry">
-<div class="form-group"><!-- Form Group NOT-REQUIRED Text Area -->
+
+<div id="brewStyleEntry" class="form-group">
 	<label for="brewStyleEntry" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Entry Info</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<textarea class="form-control" name="brewStyleEntry" id="brewStyleEntryTextArea" rows="6"><?php if ($action == "edit") echo $row_styles['brewStyleEntry']; ?></textarea>
 		<div class="help-block with-errors"></div>
 		<div class="help-block"><strong class="text-danger">Required:</strong> provide requirements for entry (e.g., <em>Entrant must specify yeast strain(s) used</em>, etc.).</div>
 	 </div>
-</div><!-- ./Form Group -->
-<div class="form-group"><!-- Form Group NOT-REQUIRED Text Area -->
+</div>
+
+<div class="form-group">
 	<label for="brewStyleInfo" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Description</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<textarea class="form-control" name="brewStyleInfo" id="brewStyleInfoTextArea" rows="6"><?php if ($action == "edit") echo $row_styles['brewStyleInfo']; ?></textarea>
-		<div class="help-block"><strong class="text-primary">Optional:</strong> provide a short description of the style.</div>
+		<div class="help-block">Provide a short description of the style.</div>
 	 </div>
+</div>
 
-</div><!-- ./Form Group -->
-	</div>
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleOG" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">OG Minimum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleOG" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleOG']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleOGMax" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">OG Maximum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleOGMax" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleOGMax']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleFG" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">FG Minimum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleFG" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleFG']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleFGMax" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">FG Maximum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleFGMax" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleFGMax']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleABV" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">ABV Minimum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleABV" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleABV']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleABVMax" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">ABV Maximum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleABVMax" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleABVMax']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleIBU" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">IBU Minimum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleIBU" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleIBU']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleIBUMax" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">IBU Maximum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleIBUMax" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleIBUMax']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleSRM" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Color Minimum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleSRM" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleSRM']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
+</div>
 
-<div class="form-group"><!-- Form Group NOT REQUIRED Text Input -->
+<div class="form-group">
 	<label for="brewStyleSRMMax" class="col-lg-2 col-md-3 col-sm-4 col-xs-12 control-label">Color Maximum</label>
 	<div class="col-lg-6 col-md-6 col-sm-8 col-xs-12">
-		<!-- Input Here -->
 		<input class="form-control" name="brewStyleSRMMax" type="text" value="<?php if ($action == "edit") echo $row_styles['brewStyleSRMMax']; ?>" placeholder="">
 	</div>
-</div><!-- ./Form Group -->
-
-
+</div>
 
 <input type="hidden" name="brewStyleOld" value="<?php if ($action == "edit") echo $row_styles['brewStyle'];?>">
 <input type="hidden" name="brewStyleActive" value="<?php if ($action == "edit") echo $row_styles['brewStyleActive']; else echo "Y"; ?>">
@@ -462,7 +477,9 @@ function checkStyleIdentifier() {
 		</div>
 	</div>
 </div>
+
 </form>
+
 <?php } 
 if (($action == "default") && ($filter == "orphans") && ($bid == "default")) { ?>
 <h3>Styles Without a Valid Style Type</h3>

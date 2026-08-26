@@ -1,7 +1,7 @@
 ---
 name: Bug Report
 about: Create a report to help us improve
-title: 'Version 2.X.X: '
+title: 'Version 3.X.X: '
 labels: ''
 assignees: ''
 
@@ -21,7 +21,7 @@ Reviewed the Good To Know Issue Reports? Yes or No
 
 *Please review the Issue reports that are labeled Good to Know. Find one and click on the label to view them all.*
 
-**Your Intallation's BCOE&M Info**
+**Your Installation's BCOE&M Info**
 - Version: 
 - Installation URL: 
 - Hosted Installation? Yes or No

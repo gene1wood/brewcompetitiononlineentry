@@ -234,7 +234,7 @@ if ($totalRows_brewer > 0) {
 
 			else {
 
-				$output_datatables_edit_link = build_action_link("fa-pencil",$base_url,"brewer","admin","edit",$row_brewer['uid'],$row_brewer['id'],$dbTable,"default",0,"Edit ".$brewer_tooltip_display_name."&rsquo;s user account information");
+				$output_datatables_edit_link = build_action_link("fa-pencil",$base_url,"admin","brewer","edit",$row_brewer['uid'],$row_brewer['id'],$dbTable,"default",0,"Edit ".$brewer_tooltip_display_name."&rsquo;s user account information");
 
 				if ($_SESSION['userLevel'] == 0) {
 
@@ -245,7 +245,7 @@ if ($totalRows_brewer > 0) {
 					if ($row_brewer['brewerEmail'] != $_SESSION['loginUsername']) $output_datatables_other_link = build_action_link("fa-lock",$base_url,"admin","make_admin","default","default",$row_brewer['uid'],"default","default",0,"Change ".$brewer_tooltip_display_name."&rsquo;s User Level");
 					else $output_datatables_other_link = "<span class=\"fa fa-lg fa-lock text-muted\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"You cannot change your own user level, ".$_SESSION['brewerFirstName'].".\"></span>";
 
-					$output_datatables_other_link2 = build_action_link("fa-user",$base_url,"user","default","username","admin",$row_brewer['user_id'],"default","default",0,"Change ".$brewer_tooltip_display_name."&rsquo;s email address");
+					$output_datatables_other_link2 = build_action_link("fa-user",$base_url,"admin","user","username","admin",$row_brewer['user_id'],"default","default",0,"Change ".$brewer_tooltip_display_name."&rsquo;s email address");
 
 				}
 
@@ -283,7 +283,7 @@ if ($totalRows_brewer > 0) {
 
 			$output_datatables_email_link .= "<a class=\"hide-loader\" href=\"mailto:".$row_brewer['brewerEmail']."\" data-toggle=\"tooltip\" data-placement=\"top\" title=\"Email ".$brewer_tooltip_display_name." at ".$row_brewer['brewerEmail']."\"><span class=\"fa fa-lg fa-envelope\"></span></a>";
 
-			$output_datatables_add_link = build_action_link("fa-beer",$base_url,"brew","entries","add",$row_brewer['uid'],"default","default","default",0,"Add an entry for ".$brewer_tooltip_display_name);
+			$output_datatables_add_link = build_action_link("fa-beer",$base_url,"admin","entries","add",$row_brewer['uid'],"default","default","default",0,"Add an entry for ".$brewer_tooltip_display_name); // /index.php?section=admin&go=entries&action=add&bid=864
 
 			$output_actions_arr = array($output_datatables_add_link, $output_datatables_edit_link, $output_datatables_delete_link, $output_datatables_other_link, $output_datatables_email_link, $output_datatables_phone_link, $output_datatables_other_link2, $output_datatables_change_pwd, $output_datatables_view_link, $output_datatables_view_link2);
 
@@ -765,7 +765,7 @@ if ($filter == "stewards")  echo "<div class='error'>There are no stewards avail
 if ($action == "add")  {
 if ($filter == "default") { ?>
 <form action="<?php echo $base_url; ?>includes/process.inc.php?action=add&amp;dbTable=<?php echo $users_db_table; ?>&amp;section=<?php echo $section; ?>&amp;go=<?php echo $go; ?>" method="POST" name="form1" id="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <table>
 	<tr>
     	<td class="dataLabel">Email Address:</td>
@@ -797,7 +797,7 @@ if ($filter == "info") {
 if (($action == "add") || (($action == "edit") && (($_SESSION['loginUsername'] == $row_brewer['brewerEmail'])) || ($_SESSION['userLevel'] <= "1")))  {
 ?>
 <form action="<?php echo $base_url; ?>includes/process.inc.php?section=<?php echo "admin&amp;go=".$go."&amp;filter=".$filter; ?>&amp;action=<?php echo $action; ?>&amp;dbTable=<?php echo $brewer_db_table; ?>" method="POST" name="form1" id="form1">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <table class="dataTable">
 <tr>
       <td class="dataLabel" width="5%">Email:</td>

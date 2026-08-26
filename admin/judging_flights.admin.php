@@ -58,7 +58,7 @@ if (($filter != "default") && ($filter != "rounds"))  {
 
 				for($i=1; $i<$flight_count+1; $i++) {
 					if (($action == "add") && ($i == 1)) $checked = "checked";
-					elseif (($action == "edit") && ($flight_number_value[1] == $i)) $checked = "checked";
+					elseif (($action == "edit") && (isset($flight_number_value[1])) && ($flight_number_value[1] == $i)) $checked = "checked";
 					else $checked = "";
 					$flight_table_tbody .= "<td>";
 					$flight_table_tbody .= "<input type=\"radio\" name=\"flightNumber".$hidden_input_id."\" value=\"flight".$i."\" ".$checked.">";
@@ -66,7 +66,7 @@ if (($filter != "default") && ($filter != "rounds"))  {
 				}
 
 				$flight_table_tbody .= "<td>";
-				if ($action == "edit") $flight_table_tbody .= $flight_number_value[3];
+				if (($action == "edit") && (isset($flight_number_value[3]))) $flight_table_tbody .= $flight_number_value[3];
 				else $flight_table_tbody .= "&nbsp;";
 				$flight_table_tbody .= "</td>\n";
 				$flight_table_tbody .= "<td>";
@@ -193,7 +193,7 @@ document.getElementById('<?php echo "flight".$i; ?>').innerHTML = butCount.<?php
 echo "<p><strong>Table Location:</strong> ".table_location($row_tables_edit['id'],$_SESSION['prefsDateFormat'],$_SESSION['prefsTimeZone'],$_SESSION['prefsTimeFormat'],"default")."</p>"; ?>
 <p onload="updateButCount(event);">Based upon your <a href="<?php echo $base_url; ?>index.php?section=admin&amp;go=judging_preferences">competition organization preferences</a>,  <?php if ($flight_count == 1) echo " this table only requires one flight."; else echo " this table can be divided into ".readable_number($flight_count)." flights.  For each entry below, designate the flight in which it will be judged."; ?></p>
 <form name="flights" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?action=<?php echo $action; ?>&amp;dbTable=<?php echo $judging_flights_db_table; ?>" onreset="updateButCount(event);">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <script type="text/javascript" language="javascript">
 	 $(document).ready(function() {
 		$('#flightCount').dataTable( {
@@ -258,7 +258,7 @@ if (($action == "assign") && ($filter == "rounds")) {
 	if ($totalRows_tables > 0) {
 ?>
 <form class="form-horizontal" name="form1" role="form" id="formfield" method="post" action="<?php echo $base_url; ?>includes/process.inc.php?action=<?php echo $action; ?>&amp;dbTable=<?php echo $judging_flights_db_table; ?>&amp;filter=<?php echo $filter; ?>">
-<input type="hidden" name="token" value ="<?php if (isset($_SESSION['token'])) echo $_SESSION['token']; ?>">
+<input type="hidden" name="user_session_token" value ="<?php if (isset($_SESSION['user_session_token'])) echo htmlspecialchars($_SESSION['user_session_token'], ENT_QUOTES, 'UTF-8'); ?>">
 <?php
 		do { $a[] = $row_tables_edit['id']; } while ($row_tables_edit = mysqli_fetch_assoc($tables_edit));
 
